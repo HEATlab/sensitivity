@@ -1,11 +1,11 @@
 from enum import Flag
 from glob import glob
-# from math import gamma
 import random
 from turtle import shape
 import numpy as np
 from scipy.stats import norm
 from scipy.stats import gamma
+from distfit import distfit
 
 
 
@@ -14,6 +14,8 @@ _samples = {}
 """Stores a dictionary of the form {key: list of distribution samples}"""
 _invcdfs = {}
 """Stores a dictionary of the form {key: list of inverse cdf points}"""
+_empiricalData = {}
+"""Stores a dictionary of the form {key: list of empirical data}"""
 
 MAX_RESAMPLE = 10
 
@@ -23,16 +25,35 @@ def collect_data(rundir):
     pass
 
 
-def empirical_sample(distribution_name: str, state=None) -> float:
+def empirical_sample(distribution_name, state=None) -> float:
     """Gets a sample from a specified distribution.
 
     Return:
         Returns a float from the distribution.
     """
     if state is None:
-        return np.random.choice(_samples[distribution_name])
+        return gamma_sample( 3, 1)
+        randomX = np.random.choice(_samples[distribution_name][0])
+        indexX = np.where(_samples[distribution_name][0] == randomX)
+        randomY = _samples[distribution_name][1][indexX]
+        return (randomX, randomY[0])
     else:
         return state.choice(_samples[distribution_name])
+
+def empirical_samples(distribution_name, size):
+    sampleX = []
+    for x in range(size):
+        sampleX.append(empirical_sample(distribution_name))
+    np.asarray(sampleX)
+    return sampleX
+        
+
+def fitdist(distribution:str, size):
+    dist = distfit()
+    dist.fit_transform(np.array(empirical_samples(1, size )))
+    print(dist.summary)
+    dist.plot_summary()
+    return None
 
 def gamma_sample(alpha: float, beta:float, state = None, res=1000, neg=False) -> float:
     count = 0
@@ -46,6 +67,7 @@ def gamma_sample(alpha: float, beta:float, state = None, res=1000, neg=False) ->
         else:
             ans = state.gamma(shape=alpha, scale=beta, size=None)
         count += 1
+    
     return ans
 
 def norm_sample(mu: float, sigma: float, state=None, res=1000,
@@ -251,8 +273,8 @@ if __name__ == "__main__":
     import doctest
     doctest.testmod()
     import matplotlib.pyplot as plt
-    curve = invcdf_norm_curve(2, 1)
-    # curve = gamma_curve(1, 1)    ##gamma pdf
+    # curve = invcdf_norm_curve(1, 1)
+    curve = gamma_curve(1, 1)    ##gamma pdf
 
     # curve = invcdf_gamma_curve(5, 1)
     plt.plot(curve[0], curve[1])
