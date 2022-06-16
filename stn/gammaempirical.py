@@ -1,11 +1,14 @@
 from enum import Flag
 from glob import glob
+
 # from math import gamma
+
 import random
 from turtle import shape
 import numpy as np
 from scipy.stats import norm
 from scipy.stats import gamma
+
 
 
 
@@ -15,6 +18,7 @@ _samples = {}
 _invcdfs = {}
 """Stores a dictionary of the form {key: list of inverse cdf points}"""
 
+
 MAX_RESAMPLE = 10
 
 
@@ -23,16 +27,20 @@ def collect_data(rundir):
     pass
 
 
+
 def empirical_sample(distribution_name: str, state=None) -> float:
+
     """Gets a sample from a specified distribution.
 
     Return:
         Returns a float from the distribution.
     """
+
     if state is None:
         return np.random.choice(_samples[distribution_name])
     else:
         return state.choice(_samples[distribution_name])
+
 
 def gamma_sample(alpha: float, beta:float, state = None, res=1000, neg=False) -> float:
     count = 0
@@ -46,6 +54,7 @@ def gamma_sample(alpha: float, beta:float, state = None, res=1000, neg=False) ->
         else:
             ans = state.gamma(shape=alpha, scale=beta, size=None)
         count += 1
+
     return ans
 
 def norm_sample(mu: float, sigma: float, state=None, res=1000,
@@ -82,10 +91,12 @@ def norm_sample(mu: float, sigma: float, state=None, res=1000,
     return ans
 
 def gamma_curve(alpha: float, beta: float, res = 1000, neg=False):
+
     print(alpha, beta)
     global _samples
     if (alpha, beta, res, neg) in _samples:
         return _samples[(alpha, beta, res, neg)]
+
     if neg:
         x = np.linspace(gamma.ppf(0.003, a=alpha, scale=beta),
                         gamma.ppf(0.997, a=alpha, scale=beta),
@@ -96,7 +107,6 @@ def gamma_curve(alpha: float, beta: float, res = 1000, neg=False):
                         res)
     y = gamma.pdf(x, alpha, scale=beta)
     _samples[((alpha, beta, res, neg))] = (x,y)
-
     return(x,y)
 
 def norm_curve(mu: float, sigma: float, res=1000, neg=False):
@@ -114,6 +124,7 @@ def norm_curve(mu: float, sigma: float, res=1000, neg=False):
     # Memoisation check
     if (mu, sigma, res, neg) in _samples:
         return _samples[(mu, sigma, res, neg)]
+
     if neg:
         x = np.linspace(norm.ppf(0.003, loc=mu, scale=sigma),
                         norm.ppf(0.997, loc=mu, scale=sigma),
@@ -124,29 +135,35 @@ def norm_curve(mu: float, sigma: float, res=1000, neg=False):
                         res)
     y = norm.pdf(x, loc=mu, scale=sigma)
     # Memoisation
+
     _samples[(mu, sigma, res, neg)] = (x, y)
+
     return (x, y)
 
 def invcdf_gamma_curve(alpha:float, beta:float, res=1000, neg=False):
     global _invcdfs
+
     if (alpha, beta, res, neg) in _invcdfs:
         return _invcdfs[(alpha, beta, res, neg)]
     gammax, gammay = gamma_curve(alpha, beta, res=res, neg=neg)
     delx = gammax[1] - gammax[0]
     sol = (np.cumsum(gammay) * delx, gammax)
     _invcdfs[(alpha, beta, res, neg)] = sol
+
     return sol
 
 def invcdf_norm_curve(mu: float, sigma: float, res=1000, neg=False):
     """Generate an inverse CDF curve for a normal distribution
     """
     global _invcdfs
+
     if (mu, sigma, res, neg) in _invcdfs:
         return _invcdfs[(mu, sigma, res, neg)]
     normx, normy = norm_curve(mu, sigma, res=res, neg=neg)
     delx = normx[1] - normx[0]
     sol = (np.cumsum(normy) * delx, normx)
     _invcdfs[(mu, sigma, res, neg)] = sol
+
     return sol
 
 
@@ -257,3 +274,4 @@ if __name__ == "__main__":
     # curve = invcdf_gamma_curve(5, 1)
     plt.plot(curve[0], curve[1])
     plt.show()
+
