@@ -103,6 +103,18 @@ def fitdist(datasets:list, sizes:list, newSmapleSizes, debug = False, types='pop
                 fits[guessDist] = (dist.model, [])
     return fits
 
+def predict_sample(distribution_name, data:list, plot=False):
+    """"""
+    dist, loc, par, res, neg = distribution_name
+    dist = distfit()
+    
+    pool = empirical_samples(distribution_name, size=1000)
+    dist.fit_transform(np.array(pool))
+    results = dist.predict(data)
+    if plot:
+        fig, ax = dist.plot()
+        fig.show()
+    return results
 
 def gamma_sample(alpha: float, beta:float, state = None, res=1000, neg=False) -> float:
     count = 0
