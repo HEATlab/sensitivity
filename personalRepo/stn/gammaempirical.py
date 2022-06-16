@@ -1,5 +1,6 @@
 from enum import Flag
 from glob import glob
+from os import stat
 import random
 from turtle import shape
 import numpy as np
@@ -31,29 +32,77 @@ def empirical_sample(distribution_name, state=None) -> float:
     Return:
         Returns a float from the distribution.
     """
-    if state is None:
-        return gamma_sample( 3, 1)
-        randomX = np.random.choice(_samples[distribution_name][0])
-        indexX = np.where(_samples[distribution_name][0] == randomX)
-        randomY = _samples[distribution_name][1][indexX]
-        return (randomX, randomY[0])
+    dist, loc, par, res, neg = distribution_name
+
+    if distribution_name in _samples:
+        """if a distribution is already in the global samples, 
+            we draw a sample based on the probability in the specific distribution"""
+        if state is None:
+            return random.choices(_samples[distribution_name][0], weights = _samples[distribution_name][1])[0]
+        return state.choice(a = _samples[distribution_name][0], weights = _samples[distribution_name][1])
     else:
-        return state.choice(_samples[distribution_name])
+        """if the wanted sample's distribution is not in _samples, we generate a single sample based on the distribution
+            without adding it into _samples"""
+        if state is None:
+            if dist == 'gamma': return gamma_sample(loc, par)
+            if dist == 'norm': return norm_sample(loc, par)
+            return 'not yet'
 
 def empirical_samples(distribution_name, size):
+    """return a list of #size of samples based on the distribution specified"""
     sampleX = []
     for x in range(size):
         sampleX.append(empirical_sample(distribution_name))
-    np.asarray(sampleX)
     return sampleX
-        
 
-def fitdist(distribution:str, size):
-    dist = distfit()
-    dist.fit_transform(np.array(empirical_samples(1, size )))
-    print(dist.summary)
-    dist.plot_summary()
-    return None
+def generate_data(distributions:list, sizes:list):
+    """return a dictionary of data acording to the distribution and size requirements"""
+    data = {}
+    for distribution_name in distributions:
+        indexDist = distributions.index(distribution_name)
+        newdata = empirical_samples(distribution_name, sizes[indexDist])
+        data[distribution_name] = newdata
+    return data
+
+
+def fitdist(datasets:list, sizes:list, newSmapleSizes, debug = False, types='popular', exampleDists =[], exampleSizes=[], plot=False):
+    """return a dictionary of distributions of a data set and new samples drawn based on the
+        best fit distribution
+        debug: test fit against a known distribution"""
+    dist = distfit(distr=types)  
+    fits = {}  
+
+    if debug:
+        for distribution_name in exampleDists:
+            indexDist = exampleDists.index(distribution_name)
+            X = np.array(empirical_samples(distribution_name, exampleSizes[indexDist] ))
+            dist.fit_transform(X)
+            guessDist = dist.model['name']
+            fig, ax = dist.plot()
+            fig.show()
+            summary, ax2 = dist.plot_summary()
+            summary.show()
+            if newSmapleSizes[indexDist] != 0:
+                newData = dist.generate(newSmapleSizes[indexDist])
+                fits[distribution_name] = (guessDist, dist.model, newData )
+            else:
+                fits[distribution_name] = (guessDist, dist.model, [])
+    else:
+        for data in datasets:
+            indexData = datasets.index(data)
+            X = np.array(np.random.choice(a = data, size = sizes[indexData]))
+            dist.fit_transform(X)
+            guessDist = (dist.model['name'], dist.model['loc'] if dist.model['name'] =='norm'else dist.model['arg'], dist.model['scale'], len(data), False)
+            if plot:
+                fig, ax = dist.plot()
+                fig.show()
+            if newSmapleSizes[indexData] != 0:
+                newData = dist.generate(newSmapleSizes[indexData])
+                fits[guessDist] = (dist.model, newData)
+            else:
+                fits[guessDist] = (dist.model, [])
+    return fits
+
 
 def gamma_sample(alpha: float, beta:float, state = None, res=1000, neg=False) -> float:
     count = 0
@@ -104,10 +153,9 @@ def norm_sample(mu: float, sigma: float, state=None, res=1000,
     return ans
 
 def gamma_curve(alpha: float, beta: float, res = 1000, neg=False):
-    print(alpha, beta)
     global _samples
-    if (alpha, beta, res, neg) in _samples:
-        return _samples[(alpha, beta, res, neg)]
+    if ('gamma', alpha, beta, res, neg) in _samples:
+        return _samples[('gamma', alpha, beta, res, neg)]
     if neg:
         x = np.linspace(gamma.ppf(0.003, a=alpha, scale=beta),
                         gamma.ppf(0.997, a=alpha, scale=beta),
@@ -117,7 +165,7 @@ def gamma_curve(alpha: float, beta: float, res = 1000, neg=False):
                         max(gamma.ppf(0.997, a=alpha, scale=beta), 0.0),
                         res)
     y = gamma.pdf(x, alpha, scale=beta)
-    _samples[((alpha, beta, res, neg))] = (x,y)
+    _samples[(('gamma', alpha, beta, res, neg))] = (x,y)
 
     return(x,y)
 
@@ -135,7 +183,7 @@ def norm_curve(mu: float, sigma: float, res=1000, neg=False):
 
     # Memoisation check
     if (mu, sigma, res, neg) in _samples:
-        return _samples[(mu, sigma, res, neg)]
+        return _samples[('norm', mu, sigma, res, neg)]
     if neg:
         x = np.linspace(norm.ppf(0.003, loc=mu, scale=sigma),
                         norm.ppf(0.997, loc=mu, scale=sigma),
@@ -146,29 +194,29 @@ def norm_curve(mu: float, sigma: float, res=1000, neg=False):
                         res)
     y = norm.pdf(x, loc=mu, scale=sigma)
     # Memoisation
-    _samples[(mu, sigma, res, neg)] = (x, y)
+    _samples[('norm', mu, sigma, res, neg)] = (x, y)
     return (x, y)
 
 def invcdf_gamma_curve(alpha:float, beta:float, res=1000, neg=False):
     global _invcdfs
-    if (alpha, beta, res, neg) in _invcdfs:
-        return _invcdfs[(alpha, beta, res, neg)]
+    if ('gamma', alpha, beta, res, neg) in _invcdfs:
+        return _invcdfs[('gamma', alpha, beta, res, neg)]
     gammax, gammay = gamma_curve(alpha, beta, res=res, neg=neg)
     delx = gammax[1] - gammax[0]
     sol = (np.cumsum(gammay) * delx, gammax)
-    _invcdfs[(alpha, beta, res, neg)] = sol
+    _invcdfs[('gamma', alpha, beta, res, neg)] = sol
     return sol
 
 def invcdf_norm_curve(mu: float, sigma: float, res=1000, neg=False):
     """Generate an inverse CDF curve for a normal distribution
     """
     global _invcdfs
-    if (mu, sigma, res, neg) in _invcdfs:
-        return _invcdfs[(mu, sigma, res, neg)]
+    if ('norm', mu, sigma, res, neg) in _invcdfs:
+        return _invcdfs[('norm', mu, sigma, res, neg)]
     normx, normy = norm_curve(mu, sigma, res=res, neg=neg)
     delx = normx[1] - normx[0]
     sol = (np.cumsum(normy) * delx, normx)
-    _invcdfs[(mu, sigma, res, neg)] = sol
+    _invcdfs[('norm', mu, sigma, res, neg)] = sol
     return sol
 
 
@@ -273,9 +321,9 @@ if __name__ == "__main__":
     import doctest
     doctest.testmod()
     import matplotlib.pyplot as plt
-    # curve = invcdf_norm_curve(1, 1)
-    curve = gamma_curve(1, 1)    ##gamma pdf
+    curve = invcdf_norm_curve(1, 1)
+    # curve = gamma_curve(1, 1)    ##gamma pdf
 
     # curve = invcdf_gamma_curve(5, 1)
-    plt.plot(curve[0], curve[1])
-    plt.show()
+    # plt.plot(curve[0], curve[1])
+    # plt.show()
