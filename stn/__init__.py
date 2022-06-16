@@ -9,4 +9,4 @@ from .stnjsontools import (loadSTNfromJSON,
 
 from .distempirical import (invcdf_norm, invcdf_uniform)
 
-from .gammaempirical import (invcdf_gamma, gamma_curve)
+from .gammaempirical import (invcdf_gamma, gamma_curve, gamma_sample)
