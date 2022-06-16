@@ -8,8 +8,6 @@ from scipy.stats import norm
 from scipy.stats import gamma
 from distfit import distfit
 
-
-
 # These variables should never be imported from this file.
 _samples = {}
 """Stores a dictionary of the form {key: list of distribution samples}"""
@@ -24,7 +22,6 @@ MAX_RESAMPLE = 10
 def collect_data(rundir):
     """Unimplemented function intended for empirical data collection"""
     pass
-
 
 def empirical_sample(distribution_name, state=None) -> float:
     """Gets a sample from a specified distribution.
@@ -49,7 +46,8 @@ def empirical_sample(distribution_name, state=None) -> float:
             return 'not yet'
 
 def empirical_samples(distribution_name, size):
-    """return a list of #size of samples based on the distribution specified and store the samples globally"""
+    """return a list of #size of samples based on the distribution specified and store the samples globally
+    """
     global _empiricalData
     sampleX = []
     if distribution_name in _empiricalData:
@@ -60,7 +58,8 @@ def empirical_samples(distribution_name, size):
     return sampleX
 
 def generate_data(distributions:list, sizes:list):
-    """return a dictionary of data acording to the distribution and size requirements"""
+    """return a dictionary of data acording to the distribution and size requirements
+    """
     data = {}
     for distribution_name in distributions:
         indexDist = distributions.index(distribution_name)
@@ -68,11 +67,10 @@ def generate_data(distributions:list, sizes:list):
         data[distribution_name] = newdata
     return data
 
-
 def fitdist(datasets:list, sizes:list, newSmapleSizes, debug = False, types='popular', exampleDists =[], exampleSizes=[], plot=False):
-    """return a dictionary of distributions of a data set and new samples drawn based on the
-        best fit distribution
-        debug: test fit against a known distribution"""
+    """return a dictionary of distributions of a data set and new samples drawn based on the best fit distribution
+        debug: test fit against a known distribution
+    """
     dist = distfit(distr=types)  
     fits = {}  
 
@@ -96,7 +94,7 @@ def fitdist(datasets:list, sizes:list, newSmapleSizes, debug = False, types='pop
             indexData = datasets.index(data)
             X = np.array(np.random.choice(a = data, size = sizes[indexData]))
             dist.fit_transform(X)
-            guessDist = (dist.model['name'], dist.model['loc'] if dist.model['name'] =='norm'else dist.model['arg'], dist.model['scale'], len(data), False)
+            guessDist = (dist.model['name'], dist.model['loc'] if dist.model['name'] =='norm'else dist.model['arg'][0], dist.model['scale'], len(data), False)
             if plot:
                 fig, ax = dist.plot()
                 fig.show()
@@ -108,8 +106,8 @@ def fitdist(datasets:list, sizes:list, newSmapleSizes, debug = False, types='pop
     return fits
 
 def predict_sample(distribution_name, data:list, plot=False):
-    """"""
-    dist, loc, par, res, neg = distribution_name
+    """return a list of probs for data based on the specified distribution
+    """
     dist = distfit()
     
     pool = empirical_samples(distribution_name, size=1000)
@@ -121,6 +119,8 @@ def predict_sample(distribution_name, data:list, plot=False):
     return results
 
 def gamma_sample(alpha: float, beta:float, state = None, res=1000, neg=False) -> float:
+    """return a gamma sample based on shape and scale
+    """
     count = 0
     ans = -1.0
     while ans < 0.0:
@@ -169,6 +169,8 @@ def norm_sample(mu: float, sigma: float, state=None, res=1000,
     return ans
 
 def gamma_curve(alpha: float, beta: float, res = 1000, neg=False):
+    """gamma pdf curve
+    """
     global _samples
     if ('gamma', alpha, beta, res, neg) in _samples:
         return _samples[('gamma', alpha, beta, res, neg)]
@@ -214,6 +216,8 @@ def norm_curve(mu: float, sigma: float, res=1000, neg=False):
     return (x, y)
 
 def invcdf_gamma_curve(alpha:float, beta:float, res=1000, neg=False):
+    """Generate an inverse CDF curve for a gamma distribution
+    """
     global _invcdfs
     if ('gamma', alpha, beta, res, neg) in _invcdfs:
         return _invcdfs[('gamma', alpha, beta, res, neg)]
@@ -234,7 +238,6 @@ def invcdf_norm_curve(mu: float, sigma: float, res=1000, neg=False):
     sol = (np.cumsum(normy) * delx, normx)
     _invcdfs[('norm', mu, sigma, res, neg)] = sol
     return sol
-
 
 def binary_search_lookup(val, l):
     """Returns the index of where the val is in a sorted list.
@@ -303,7 +306,6 @@ def uniform_sample(lb: float, ub: float, random_state=None) -> float:
         return np.random.uniform(lb, ub)
     else:
         return random_state.uniform(lb, ub)
-
 
 def invcdf_uniform(val: float, lb: float, ub: float) -> float:
     """Returns the inverse CDF lookup of a uniform distribution. Is constant
