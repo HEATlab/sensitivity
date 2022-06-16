@@ -49,10 +49,14 @@ def empirical_sample(distribution_name, state=None) -> float:
             return 'not yet'
 
 def empirical_samples(distribution_name, size):
-    """return a list of #size of samples based on the distribution specified"""
+    """return a list of #size of samples based on the distribution specified and store the samples globally"""
+    global _empiricalData
     sampleX = []
+    if distribution_name in _empiricalData:
+        return np.random.choice(_empiricalData[distribution_name], size=size)
     for x in range(size):
         sampleX.append(empirical_sample(distribution_name))
+    _empiricalData[distribution_name] = sampleX
     return sampleX
 
 def generate_data(distributions:list, sizes:list):
