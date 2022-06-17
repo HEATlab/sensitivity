@@ -68,13 +68,16 @@ def maxgain(inputstn,
                     loweststn = alphaUpdate(stncopy, tedges, result[0]-.001)
                     dc, conflicts, bounds, weight = DC_Checker(loweststn)
                     if dc:
+                        print("this is DC")
                         return loweststn
                     else:
                         # find the tightest contingent edges
-                        tightest = bounds['contingent']
-                        print(conflicts)
-                        print(len(tightest))
-                        print(len(tedges))
+                        # bounds is the information about which constraint in the original STNU can be relaxed to resolve the conflict
+                        tightest = bounds['contingent'] # there are two keys in this dict - requirement and contingent 
+                        # print(f"here prints the bounds dictionary: {bounds}") 
+                        print(f"here displays the conflicts : {conflicts}")
+                        print(f"this is the size of the set of tightest contingent edges:  {len(tightest)}")
+                        print(f"this is the size of the set of tedges = stncopy.contingentEdges:  {len(tedges)}")
                         for i,j in list(tightest.keys()):
                             edge, bound = tightest[i,j]
                             if (edge.i, edge.j) in tedges.keys():
@@ -116,6 +119,8 @@ def alphaUpdate(inputstn, tedges, alpha):
 
         return stncopy
 
+
+# \brief 
 def simulate_maxgain(network, shrinked_network, size=200, verbose=False, gauss=True):
     # Collect useful data from the original network
     contingent_pairs = network.contingentEdges.keys()
@@ -164,10 +169,10 @@ def simulate_maxgain(network, shrinked_network, size=200, verbose=False, gauss=T
 if __name__ == "__main__":
     directory = "dataset/dynamically_controllable"
 
-    data_list = glob.glob(os.path.join(directory, '*.json'))
+    #data_list = glob.glob(os.path.join(directory, '*.json'))
     # data_list = ['dataset/uncontrollable_full/uncontrollable6.json']
     # data_list = ['dataset/dreamdata/STN_a4_i4_s5_t10000/original_0.json']
-    # data_list = ['dataset/dreamdata/STN_a2_i4_s1_t4000/original_9.json']
+    data_list = ['dataset/dreamdata/STN_a2_i4_s1_t4000/original_9.json']
     # data_list = ['dataset/dreamdata/STN_a3_i8_s1_t2000/original_8.json', 'dataset/dreamdata/STN_a3_i8_s1_t2000/original_4.json', 'dataset/dreamdata/STN_a3_i8_s1_t2000/original_5.json', 'dataset/dreamdata/STN_a3_i8_s1_t2000/original_9.json', 'dataset/dreamdata/STN_a3_i8_s1_t2000/original_2.json', 'dataset/dreamdata/STN_a3_i8_s1_t2000/original_0.json', 'dataset/dreamdata/STN_a3_i8_s1_t2000/original_7.json', 'dataset/dreamdata/STN_a3_i8_s3_t6000/original_9.json', 'dataset/dreamdata/STN_a3_i8_s3_t6000/original_1.json', 'dataset/dreamdata/STN_a4_i8_s1_t1000/original_4.json', 'dataset/dreamdata/STN_a4_i8_s1_t1000/original_5.json', 'dataset/dreamdata/STN_a4_i8_s1_t1000/original_9.json', 'dataset/dreamdata/STN_a4_i8_s1_t1000/original_3.json', 'dataset/dreamdata/STN_a4_i8_s1_t1000/original_0.json', 'dataset/dreamdata/STN_a4_i8_s1_t1000/original_1.json', 'dataset/dreamdata/STN_a4_i8_s1_t1000/original_6.json', 'dataset/dreamdata/STN_a4_i8_s1_t1000/original_7.json', 'dataset/dreamdata/STN_a3_i4_s5_t10000/original_3.json', 'dataset/dreamdata/STN_a2_i4_s1_t1000/original_5.json', 'dataset/dreamdata/STN_a2_i4_s1_t1000/original_9.json', 'dataset/dreamdata/STN_a2_i4_s1_t1000/original_2.json', 'dataset/dreamdata/STN_a3_i8_s3_t3000/original_4.json', 'dataset/dreamdata/STN_a3_i8_s3_t3000/original_9.json', 'dataset/dreamdata/STN_a3_i8_s3_t3000/original_3.json', 'dataset/dreamdata/STN_a3_i8_s3_t3000/original_6.json', 'dataset/dreamdata/STN_a3_i8_s3_t3000/original_7.json', 'dataset/dreamdata/STN_a4_i8_s1_t4000/original_8.json', 'dataset/dreamdata/STN_a4_i8_s1_t4000/original_5.json', 'dataset/dreamdata/STN_a4_i8_s1_t4000/original_2.json', 'dataset/dreamdata/STN_a4_i8_s1_t4000/original_0.json', 'dataset/dreamdata/STN_a4_i8_s1_t4000/original_1.json', 'dataset/dreamdata/STN_a4_i8_s1_t4000/original_6.json', 'dataset/dreamdata/STN_a4_i8_s1_t4000/original_7.json', 'dataset/dreamdata/STN_a3_i4_s5_t20000/original_3.json', 'dataset/dreamdata/STN_a3_i4_s5_t20000/original_7.json', 'dataset/dreamdata/STN_a4_i8_s5_t5000/original_1.json', 'dataset/dreamdata/STN_a4_i8_s5_t5000/original_7.json', 'dataset/dreamdata/STN_a4_i4_s5_t5000/original_3.json', 'dataset/dreamdata/STN_a4_i4_s5_t5000/original_0.json', 'dataset/dreamdata/STN_a2_i8_s5_t20000/original_4.json', 'dataset/dreamdata/STN_a2_i8_s5_t20000/original_9.json', 'dataset/dreamdata/STN_a2_i8_s1_t1000/original_8.json', 'dataset/dreamdata/STN_a2_i8_s1_t1000/original_4.json', 'dataset/dreamdata/STN_a2_i8_s1_t1000/original_2.json', 'dataset/dreamdata/STN_a2_i8_s1_t1000/original_3.json', 'dataset/dreamdata/STN_a2_i8_s1_t1000/original_0.json', 'dataset/dreamdata/STN_a2_i8_s1_t1000/original_1.json', 'dataset/dreamdata/STN_a2_i8_s1_t1000/original_6.json', 'dataset/dreamdata/STN_a3_i4_s3_t3000/original_5.json', 'dataset/dreamdata/STN_a3_i4_s3_t3000/original_1.json', 'dataset/dreamdata/STN_a3_i4_s3_t3000/original_6.json', 'dataset/dreamdata/STN_a3_i4_s3_t3000/original_7.json', 'dataset/dreamdata/STN_a2_i8_s5_t10000/original_5.json', 'dataset/dreamdata/STN_a3_i8_s5_t20000/original_6.json', 'dataset/dreamdata/STN_a4_i8_s5_t20000/original_4.json', 'dataset/dreamdata/STN_a4_i4_s1_t1000/original_8.json', 'dataset/dreamdata/STN_a4_i4_s1_t1000/original_0.json', 'dataset/dreamdata/STN_a4_i4_s1_t1000/original_7.json', 'dataset/dreamdata/STN_a2_i8_s5_t5000/original_6.json', 'dataset/dreamdata/STN_a2_i8_s5_t5000/original_7.json', 'dataset/dreamdata/STN_a3_i8_s5_t10000/original_8.json', 'dataset/dreamdata/STN_a3_i8_s5_t10000/original_2.json', 'dataset/dreamdata/STN_a3_i8_s5_t10000/original_1.json', 'dataset/dreamdata/STN_a3_i4_s1_t2000/original_3.json', 'dataset/dreamdata/STN_a3_i4_s1_t2000/original_7.json', 'dataset/dreamdata/STN_a4_i8_s5_t10000/original_5.json', 'dataset/dreamdata/STN_a4_i8_s5_t10000/original_9.json', 'dataset/dreamdata/STN_a4_i8_s5_t10000/original_2.json', 'dataset/dreamdata/STN_a4_i8_s5_t10000/original_1.json', 'dataset/dreamdata/STN_a4_i8_s5_t10000/original_7.json', 'dataset/dreamdata/STN_a3_i4_s3_t6000/original_3.json', 'dataset/dreamdata/STN_a2_i8_s1_t4000/original_8.json', 'dataset/dreamdata/STN_a2_i8_s1_t4000/original_4.json', 'dataset/dreamdata/STN_a2_i8_s1_t4000/original_9.json', 'dataset/dreamdata/STN_a2_i8_s1_t4000/original_2.json', 'dataset/dreamdata/STN_a2_i8_s1_t4000/original_0.json', 'dataset/dreamdata/STN_a2_i8_s1_t4000/original_1.json', 'dataset/dreamdata/STN_a2_i8_s1_t4000/original_7.json', 'dataset/dreamdata/STN_a4_i4_s1_t2000/original_5.json', 'dataset/dreamdata/STN_a4_i4_s1_t2000/original_3.json', 'dataset/dreamdata/STN_a4_i4_s1_t2000/original_7.json', 'dataset/dreamdata/STN_a4_i4_s3_t6000/original_8.json', 'dataset/dreamdata/STN_a2_i8_s3_t3000/original_8.json', 'dataset/dreamdata/STN_a2_i8_s3_t3000/original_9.json', 'dataset/dreamdata/STN_a2_i8_s3_t3000/original_2.json', 'dataset/dreamdata/STN_a2_i8_s3_t3000/original_3.json', 'dataset/dreamdata/STN_a2_i8_s3_t3000/original_1.json', 'dataset/dreamdata/STN_a2_i8_s3_t3000/original_7.json', 'dataset/dreamdata/STN_a3_i4_s1_t1000/original_8.json', 'dataset/dreamdata/STN_a3_i4_s1_t1000/original_4.json', 'dataset/dreamdata/STN_a3_i4_s1_t1000/original_5.json', 'dataset/dreamdata/STN_a3_i4_s1_t1000/original_6.json', 'dataset/dreamdata/STN_a3_i4_s1_t1000/original_7.json', 'dataset/dreamdata/STN_a4_i4_s3_t12000/original_6.json', 'dataset/dreamdata/STN_a3_i4_s3_t12000/original_8.json', 'dataset/dreamdata/STN_a4_i4_s3_t3000/original_5.json', 'dataset/dreamdata/STN_a4_i4_s3_t3000/original_7.json', 'dataset/dreamdata/STN_a3_i4_s1_t4000/original_5.json', 'dataset/dreamdata/STN_a2_i8_s3_t6000/original_8.json', 'dataset/dreamdata/STN_a2_i8_s1_t2000/original_8.json', 'dataset/dreamdata/STN_a2_i8_s1_t2000/original_4.json', 'dataset/dreamdata/STN_a2_i8_s1_t2000/original_5.json', 'dataset/dreamdata/STN_a2_i8_s1_t2000/original_3.json', 'dataset/dreamdata/STN_a2_i8_s1_t2000/original_0.json', 'dataset/dreamdata/STN_a2_i8_s1_t2000/original_6.json', 'dataset/dreamdata/STN_a2_i8_s1_t2000/original_7.json', 'dataset/dreamdata/STN_a3_i8_s1_t4000/original_8.json', 'dataset/dreamdata/STN_a3_i8_s1_t4000/original_4.json', 'dataset/dreamdata/STN_a3_i8_s1_t4000/original_9.json', 'dataset/dreamdata/STN_a3_i8_s1_t4000/original_2.json', 'dataset/dreamdata/STN_a3_i8_s1_t4000/original_3.json', 'dataset/dreamdata/STN_a3_i8_s1_t4000/original_1.json', 'dataset/dreamdata/STN_a3_i8_s1_t4000/original_6.json', 'dataset/dreamdata/STN_a3_i8_s1_t4000/original_7.json', 'dataset/dreamdata/STN_a3_i8_s5_t5000/original_8.json', 'dataset/dreamdata/STN_a3_i8_s5_t5000/original_4.json', 'dataset/dreamdata/STN_a3_i8_s5_t5000/original_9.json', 'dataset/dreamdata/STN_a3_i8_s5_t5000/original_3.json', 'dataset/dreamdata/STN_a3_i8_s5_t5000/original_6.json', 'dataset/dreamdata/STN_a2_i4_s1_t2000/original_4.json', 'dataset/dreamdata/STN_a2_i4_s1_t2000/original_0.json', 'dataset/dreamdata/STN_a2_i8_s3_t12000/original_5.json', 'dataset/dreamdata/STN_a4_i8_s3_t3000/original_9.json', 'dataset/dreamdata/STN_a4_i8_s3_t3000/original_3.json', 'dataset/dreamdata/STN_a4_i8_s3_t3000/original_0.json', 'dataset/dreamdata/STN_a4_i8_s3_t3000/original_1.json', 'dataset/dreamdata/STN_a4_i8_s3_t3000/original_6.json', 'dataset/dreamdata/STN_a4_i8_s3_t3000/original_7.json', 'dataset/dreamdata/STN_a3_i8_s1_t1000/original_8.json', 'dataset/dreamdata/STN_a3_i8_s1_t1000/original_4.json', 'dataset/dreamdata/STN_a3_i8_s1_t1000/original_5.json', 'dataset/dreamdata/STN_a3_i8_s1_t1000/original_9.json', 'dataset/dreamdata/STN_a3_i8_s1_t1000/original_3.json', 'dataset/dreamdata/STN_a3_i8_s1_t1000/original_0.json', 'dataset/dreamdata/STN_a3_i8_s1_t1000/original_1.json', 'dataset/dreamdata/STN_a3_i8_s1_t1000/original_6.json', 'dataset/dreamdata/STN_a4_i8_s1_t2000/original_8.json', 'dataset/dreamdata/STN_a4_i8_s1_t2000/original_4.json', 'dataset/dreamdata/STN_a4_i8_s1_t2000/original_5.json', 'dataset/dreamdata/STN_a4_i8_s1_t2000/original_9.json', 'dataset/dreamdata/STN_a4_i8_s1_t2000/original_3.json', 'dataset/dreamdata/STN_a4_i8_s1_t2000/original_0.json', 'dataset/dreamdata/STN_a4_i8_s1_t2000/original_6.json', 'dataset/dreamdata/STN_a4_i8_s3_t6000/original_4.json', 'dataset/dreamdata/STN_a4_i8_s3_t6000/original_5.json', 'dataset/dreamdata/STN_a4_i8_s3_t6000/original_2.json', 'dataset/dreamdata/STN_a4_i8_s3_t6000/original_3.json', 'dataset/dreamdata/STN_a4_i8_s3_t12000/original_5.json', 'dataset/dreamdata/STN_a4_i8_s3_t12000/original_9.json', 'dataset/dreamdata/STN_a4_i8_s3_t12000/original_2.json', 'dataset/dreamdata/STN_a3_i8_s3_t12000/original_8.json', 'dataset/dreamdata/STN_a3_i8_s3_t12000/original_5.json', 'dataset/dreamdata/STN_a3_i8_s3_t12000/original_9.json', 'dataset/dreamdata/STN_a3_i8_s3_t12000/original_7.json']
     # data_list = ['small_examples/dynamic1.json']
 
@@ -194,15 +199,24 @@ if __name__ == "__main__":
         stn = loadSTNfromJSONfile(data)
         newstn = maxgain(stn, debug = False)
         print('hotham')
-        # if a:
+        # if True:
         #     result = simulate_maxgain(stn, 100, verbose = False)
         #     print(result)
-        #     break
+        #     # break
+        print("below is STN \n")
         print(stn)
+        # print(stn.edges)
+        # print(stn.verts)
+        print("below is newSTN \n")
         print(newstn)
-        # newresult = simulate_maxgain(stn, newstn,50)
-        # print('c')
-        # oldresult = simulation(stn,50, verbose = False)
+        newresult = simulate_maxgain(stn, newstn,50)
+        print(f"printing newresult: {newresult}")
+        print('c')
+        oldresult, contingent_timept, contingent_timept_zero = simulation(stn,50, verbose = False)
+        # print(f"printing final sche: {final_schedule}")
+        print(f"printing the dataset: {contingent_timept}")
+        print(f"printing the dataset relative to zero timepoint: {contingent_timept_zero}")
+        print(f"printing oldresult: {oldresult}")
         # if a and oldresult < .9:
         #     bad_data += [(data, oldresult)]
         # comparison += [(newresult, oldresult, data)]
@@ -214,7 +228,7 @@ if __name__ == "__main__":
         #     if newresult == 0.0:
         #         failed += [data]
         # comparison += [(newresult, oldresult)]
-        print(comparison)
+        # print(comparison)
 
     # text_file = open("weird.txt", "w")
     # text_file.write(str(bad_data))

@@ -282,19 +282,19 @@ if __name__ == "__main__":
     count = 0
 
 
-    directory = "small_examples"
-    data_list = glob.glob(os.path.join(directory, '*.json'))
+    # directory = "small_examples"
+    # data_list = glob.glob(os.path.join(directory, '*.json'))
 
 
     # testing dream data ##
 
-    # directory = 'dataset/dreamdata/'
-    # folders = os.listdir(directory)
-    # data_list = []
-    # result = []
-    # for folder in folders:
-    #     data = glob.glob(os.path.join(directory, folder, '*.json'))
-    #     data_list += data
+    directory = 'dataset/dreamdata/'
+    folders = os.listdir(directory)
+    data_list = []
+    result = []
+    for folder in folders:
+        data = glob.glob(os.path.join(directory, folder, '*.json'))
+        data_list += data
     
     
     for data in data_list:
