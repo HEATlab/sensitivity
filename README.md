@@ -1,6 +1,6 @@
-#Improvisational Teamwork Summer 2022 
+# Improvisational Teamwork Summer 2022 
 
-#DCforPSTN
+# DCforPSTN
 This repository hosts a collection of programs written by team *Ctrl Alt Repeat* (part of the Summer 2019 HEATlab group). This work resulted in a publication at the Thirty-Fourth AAAI conference on Artificial Intelligence  titled *"Dynamic Control of Probabilistic Simple Temporal Networks"*.  A pre-print is available [here](https://www.cs.hmc.edu/HEAT/papers/Gao_et_al_AAAI_2020.pdf).
 
 Note that the files included in this repository need to be executed within the code environment created by team *Prob-In-Ctrl* of HEATlab, which can be accessed [here](https://github.com/HEATlab/Prob-in-Ctrl). Additionally, the results for SREA and DREA can be obtained from the DREAM algorithm [source code](https://github.com/HEATlab/DREAM).
