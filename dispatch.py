@@ -108,9 +108,15 @@ def simulation(network: STN, size: int, verbose=False, gauss=False, relaxed=Fals
         result, final_schedule = dispatch(dispatching_network, copy, realization, contingents,
                           uncontrollables, False)
 
+        # make a list of controllable events in the ordering of the final_schudule
+        event_order = []
+        for events in list(final_schedule.keys()):
+            if events in uncontrollables:
+                event_order.append(events)
+
         # intializing this as 0 for the first time point to compare to 
         last_event_time = 0 
-        for events in list(final_schedule.keys()):
+        for events in event_order:
             dict_of_list_zero[events].append(round(final_schedule[events]/1000,4))
             dict_of_list[events].append(round((final_schedule[events]-last_event_time)/1000,4)) 
             last_event_time = final_schedule[events]
@@ -123,7 +129,7 @@ def simulation(network: STN, size: int, verbose=False, gauss=False, relaxed=Fals
     if verbose:
         print(f"Worked {100*goodie}% of the time.")
 
-    return goodie, dict_of_list, dict_of_list_zero
+    return goodie, dict_of_list, dict_of_list_zero, event_order
 
 ##
 # \fn getMinLossBounds(network, numSig)
