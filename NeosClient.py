@@ -31,11 +31,10 @@ import sys
 import time
 import glob
 import json
-import xmlrpc.client as xmlrpclib
-# try:
-#     import xmlrpc.client as xmlrpclib
-# except ImportError:
-#     import xmlrpclib
+try:
+    import xmlrpc.client as xmlrpclib
+except ImportError:
+    import xmlrpclib
 
 ##
 # \file NeosClient.py

@@ -1,4 +1,3 @@
-
 from stn import STN, loadSTNfromJSONfile
 from LP import *
 from relax import *

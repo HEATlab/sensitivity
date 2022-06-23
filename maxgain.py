@@ -68,14 +68,16 @@ def maxgain(inputstn,
                     loweststn = alphaUpdate(stncopy, tedges, result[0]-.001)
                     dc, conflicts, bounds, weight = DC_Checker(loweststn)
                     if dc:
+                        print("this is DC")
                         return loweststn
                     else:
                         # find the tightest contingent edges
-                        tightest = bounds['contingent']
-                        print(conflicts)
-                        print(len(tightest))
-                        print(len(tedges))
-
+                        # bounds is the information about which constraint in the original STNU can be relaxed to resolve the conflict
+                        tightest = bounds['contingent'] # there are two keys in this dict - requirement and contingent 
+                        # print(f"here prints the bounds dictionary: {bounds}") 
+                        print(f"here displays the conflicts : {conflicts}")
+                        print(f"this is the size of the set of tightest contingent edges:  {len(tightest)}")
+                        print(f"this is the size of the set of tedges = stncopy.contingentEdges:  {len(tedges)}")
                         for i,j in list(tightest.keys()):
                             edge, bound = tightest[i,j]
                             if (edge.i, edge.j) in tedges.keys():
@@ -117,6 +119,8 @@ def alphaUpdate(inputstn, tedges, alpha):
 
         return stncopy
 
+
+# \brief 
 def simulate_maxgain(network, shrinked_network, size=200, verbose=False, gauss=True):
     # Collect useful data from the original network
     contingent_pairs = network.contingentEdges.keys()
@@ -195,17 +199,26 @@ if __name__ == "__main__":
         print("simulating", data)
         stn = loadSTNfromJSONfile(data)
         newstn = maxgain(stn, debug = False)
-
         print('hotham')
-        # if a:
+        # if True:
         #     result = simulate_maxgain(stn, 100, verbose = False)
         #     print(result)
-        #     break
+        #     # break
+        print("below is STN \n")
         print(stn)
+        # print(stn.edges)
+        # print(stn.verts)
+        print("below is newSTN \n")
         print(newstn)
-        # newresult = simulate_maxgain(stn, newstn,50)
-        # print('c')
-        # oldresult = simulation(stn,50, verbose = False)
+        newresult = simulate_maxgain(stn, newstn,50)
+        print(f"printing newresult: {newresult}")
+        print('c')
+        oldresult, contingent_timept, contingent_timept_zero, event_order = simulation(stn,50, verbose = False)
+        # print(f"printing final sche: {final_schedule}")
+        print(f"printing the order of the events: {event_order}")
+        print(f"printing the dataset: {contingent_timept}")
+        print(f"printing the dataset relative to zero timepoint: {contingent_timept_zero}")
+        print(f"printing oldresult: {oldresult}")
         # if a and oldresult < .9:
         #     bad_data += [(data, oldresult)]
         # comparison += [(newresult, oldresult, data)]
@@ -217,7 +230,7 @@ if __name__ == "__main__":
         #     if newresult == 0.0:
         #         failed += [data]
         # comparison += [(newresult, oldresult)]
-        print(comparison)
+        # print(comparison)
 
     # text_file = open("weird.txt", "w")
     # text_file.write(str(bad_data))

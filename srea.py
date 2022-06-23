@@ -281,7 +281,6 @@ if __name__ == "__main__":
     failed = 0
     count = 0
 
-
     directory = "small_examples"
     data_list = glob.glob(os.path.join(directory, '*.json'))
 

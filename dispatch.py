@@ -6,6 +6,7 @@ from relax import relaxSearch
 import empirical
 import random
 import json
+import string
 
 # For faster checking in safely_scheduled
 import simulation as sim
@@ -50,11 +51,27 @@ def simulate_file(file_name, size, verbose=False, gauss=False, relaxed=False) ->
 
 ##
 # \fn simulation(network, size)
+# @param size               The number of time the simulation runs?
 def simulation(network: STN, size: int, verbose=False, gauss=False, relaxed=False) -> float:
     # Collect useful data from the original network
     contingent_pairs = network.contingentEdges.keys()
     contingents = {src: sink for (src, sink) in contingent_pairs}
+    # this prints a set of uncontrollable events 
     uncontrollables = set(contingents.values())
+    # print("uncontrollables: ", uncontrollables)
+    uncontrolled_size = len(uncontrollables)
+    
+    # creating a dictionary to store all datapoints for each contingent data point - relative to last contingent timepoint
+    dict_of_list = {}
+
+    # creating a dictionary to store all datapoints for each contingent data point - relative to the zero timepoint
+    dict_of_list_zero = {}
+
+
+    # create uncontrolled_size amount of new lists in the dict
+    for events in uncontrollables:
+        dict_of_list[events] = []
+        dict_of_list_zero[events] = []
 
     if relaxed:
         dispatching_network, count, cycles, weights = relaxSearch(getMinLossBounds(network.copy(), 2))
@@ -88,8 +105,21 @@ def simulation(network: STN, size: int, verbose=False, gauss=False, relaxed=Fals
     for j in range(size):
         realization = generate_realization(network, gauss)
         copy = dc_network.copy()
-        result = dispatch(dispatching_network, copy, realization, contingents,
-                          uncontrollables, verbose)
+        result, final_schedule = dispatch(dispatching_network, copy, realization, contingents,
+                          uncontrollables, verbose = False)
+
+        # make a list of controllable events in the ordering of the final_schudule
+        event_order = []
+        for events in list(final_schedule.keys()):
+            if events in uncontrollables:
+                event_order.append(events)
+
+        # intializing this as 0 for the first time point to compare to 
+        last_event_time = 0 
+        for events in event_order:
+            dict_of_list_zero[events].append(round(final_schedule[events]/1000,4))
+            dict_of_list[events].append(round((final_schedule[events]-last_event_time)/1000,4)) 
+            last_event_time = final_schedule[events]
         if verbose:
             print("Completed a simulation.")
         if result:
@@ -99,7 +129,7 @@ def simulation(network: STN, size: int, verbose=False, gauss=False, relaxed=Fals
     if verbose:
         print(f"Worked {100*goodie}% of the time.")
 
-    return goodie
+    return goodie, dict_of_list, dict_of_list_zero, event_order
 
 ##
 # \fn getMinLossBounds(network, numSig)
@@ -112,8 +142,6 @@ def getMinLossBounds(network: STN, numSig):
             edge.Cij = mu + numSig * sigma
             edge.Cji = -(mu - numSig * sigma)
     return network
-
-
 
 
 ##
@@ -156,6 +184,7 @@ def dispatch(network: STN,
             print("\n\nNetwork looks like: ")
             print(dc_network)
 
+            # print("Realization (random pick values for contingent edges): ", realization)
             print("Current time windows: ", time_windows)
             print("Currently enabled: ", enabled)
             print("Already executed: ", executed)
@@ -285,14 +314,17 @@ def dispatch(network: STN,
     if verbose:
         print("\n\nFinal schedule is: ")
         print(schedule)
-        print("Network is: ")
-        print(network)
+        # print("Network is: ")
+        # print(network)
+        # print("uncontrollable is: ")
+        # print(uncontrollable_events)
 
     good = empirical.scheduleIsValid(network, schedule)
     if verbose:
         msg = "We're safe!" if good else "We failed!"
         print(msg)
-    return good
+        # print(good) -> this prints T/False
+    return good, schedule
 
 
 ##
