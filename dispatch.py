@@ -54,7 +54,7 @@ def simulate_file(file_name, size, verbose=False, gauss=False, relaxed=False, ri
 
 ##
 # \fn simulation(network, size)
-def simulation(network: STN, size: int, verbose=False, gauss=False, relaxed=False, numSig=2) -> float:
+def simulation(network: STN, size: int, verbose=False, dist=True, relaxed=False, numSig=2) -> float:
     # Collect useful data from the original network
     contingent_pairs = network.contingentEdges.keys()
     contingents = {src: sink for (src, sink) in contingent_pairs}
@@ -84,7 +84,7 @@ def simulation(network: STN, size: int, verbose=False, gauss=False, relaxed=Fals
         if dispatching_network == None:
             dispatching_network = network
     else:
-        dispatching_network= getMinLossBounds(network.copy(), numSig)
+        dispatching_network=  getMinLossBounds(network.copy(), numSig)
         
     total_victories = 0
     times.append(time.time())
@@ -109,7 +109,7 @@ def simulation(network: STN, size: int, verbose=False, gauss=False, relaxed=Fals
 
     # Run the simulation
     for j in range(size):
-        realization = generate_realization(network, gauss)
+        realization = generate_realization(network, dist)
         copy = dc_network.copy()
 
         result, final_schedule = dispatch(dispatching_network, copy, realization, contingents,
@@ -149,13 +149,14 @@ def simulation(network: STN, size: int, verbose=False, gauss=False, relaxed=Fals
 # \brief Create copy of network with bounds related to spread
 def getMinLossBounds(network: STN, numSig):
     for nodes, edge in network.edges.items():
-        print(edge.type, edge.dtype())
         if edge.type == 'Empirical' and edge.dtype() == 'gaussian':
-            print("i'm here", edge)
             sigma = edge.sigma
             mu = edge.mu
+            lb = mu + numSig * sigma
+            ub = -(mu - numSig * sigma)
             edge.Cij = min(mu + numSig * sigma, edge.Cij)
             edge.Cji = min(-(mu - numSig * sigma), edge.Cji)
+            print(lb, ub)
         elif edge.type == 'Empirical' and edge.dtype() == 'gamma':
             alpha = edge.alpha
             beta = edge.beta
@@ -358,9 +359,10 @@ def dispatch(network: STN,
 ##
 # \fn generate_realization(network)
 # \brief Uniformly at random pick values for contingent edges in STNU
-def generate_realization(network: STN, gauss=False) -> dict:
+def generate_realization(network: STN, dist=False) -> dict:
     realization = {}
-    if not gauss:
+    if not dist:
+        print("better")
         for nodes, edge in network.contingentEdges.items():
             assert edge.dtype != None
             if edge.dtype() == "gaussian":
@@ -375,6 +377,13 @@ def generate_realization(network: STN, gauss=False) -> dict:
                     print("oop")
                     generated = random.uniform(edge.dist_lb, edge.dist_ub)
                 realization[nodes[1]] = generated
+            elif edge.dtype() == "gamma":
+                print(edge.alpha, edge.beta)
+                generated = random.gammavariate(edge.alpha, edge.beta)
+                while generated < min(-edge.Cji, edge.Cij) or generated > max(-edge.Cji, edge.Cij):
+                    print("no")
+                    generated = random.uniform(edge.alpha, edge.beta)
+                realization[nodes[1]] = generated
     else:
         for nodes, edge in network.contingentEdges.items():
             mu = (edge.Cij - edge.Cji)/2
@@ -383,3 +392,8 @@ def generate_realization(network: STN, gauss=False) -> dict:
             realization[nodes[1]] = generated
         
     return realization
+
+
+if __name__ == '__main__':
+    data = 'mr_x.json'
+    stn = loadSTNfromJSONfile(data)
