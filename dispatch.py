@@ -8,6 +8,7 @@ import json
 import string
 import time
 from scipy.stats import norm
+from scipy.stats import gamma
 
 
 # For faster checking in safely_scheduled
@@ -45,8 +46,7 @@ def simulate_and_save(file_names: list, size: int, out_name: str):
 # \brief Record dispatch result for single file
 def simulate_file(file_name, size, verbose=False, gauss=False, relaxed=False, risk=0.05) -> float:
     network = loadSTNfromJSONfile(file_name)
-    numSig = norm.ppf(1-risk/2)
-    result = simulation(network, size, verbose, gauss, relaxed, numSig)
+    result = simulation(network, size, verbose, gauss, relaxed, risk)
     if verbose:
         print(f"{file_name} worked {100*result}% of the time.")
     return result
@@ -54,7 +54,7 @@ def simulate_file(file_name, size, verbose=False, gauss=False, relaxed=False, ri
 
 ##
 # \fn simulation(network, size)
-def simulation(network: STN, size: int, verbose=False, dist=True, relaxed=False, numSig=2) -> float:
+def simulation(network: STN, size: int, verbose=False, dist=True, relaxed=False, risk=0.05) -> float:
     # Collect useful data from the original network
     contingent_pairs = network.contingentEdges.keys()
     contingents = {src: sink for (src, sink) in contingent_pairs}
@@ -79,12 +79,12 @@ def simulation(network: STN, size: int, verbose=False, dist=True, relaxed=False,
 
     if relaxed:
         times.append(time.time())
-        dispatching_network, count, cycles, weights = relaxSearch(getMinLossBounds(network.copy(), numSig))
+        dispatching_network, count, cycles, weights = relaxSearch(getMinLossBounds(network.copy(), risk))
         times.append(time.time())
         if dispatching_network == None:
             dispatching_network = network
     else:
-        dispatching_network=  getMinLossBounds(network.copy(), numSig)
+        dispatching_network=  getMinLossBounds(network.copy(), risk)
         
     total_victories = 0
     times.append(time.time())
@@ -113,7 +113,7 @@ def simulation(network: STN, size: int, verbose=False, dist=True, relaxed=False,
         copy = dc_network.copy()
 
         result, final_schedule = dispatch(dispatching_network, copy, realization, contingents,
-                          uncontrollables, verbose = False)
+                          uncontrollables, verbose)
 
         # make a list of controllable events in the ordering of the final_schudule
         event_order = []
@@ -128,9 +128,6 @@ def simulation(network: STN, size: int, verbose=False, dist=True, relaxed=False,
             dict_of_list[events].append(round((final_schedule[events]-last_event_time)/1000,4)) 
             last_event_time = final_schedule[events]
 
-        times.append(time.time())
-        result = dispatch(dispatching_network, copy, realization, contingents,
-                          uncontrollables, verbose)
         times.append(time.time())
 
         if verbose:
@@ -147,22 +144,35 @@ def simulation(network: STN, size: int, verbose=False, dist=True, relaxed=False,
 ##
 # \fn getMinLossBounds(network, numSig)
 # \brief Create copy of network with bounds related to spread
-def getMinLossBounds(network: STN, numSig):
+def getMinLossBounds(network: STN, risk):
+    numSig = norm.ppf(1-risk/2)
     for nodes, edge in network.edges.items():
         if edge.type == 'Empirical' and edge.dtype() == 'gaussian':
             sigma = edge.sigma
             mu = edge.mu
-            lb = mu + numSig * sigma
-            ub = -(mu - numSig * sigma)
             edge.Cij = min(mu + numSig * sigma, edge.Cij)
             edge.Cji = min(-(mu - numSig * sigma), edge.Cji)
-            print(lb, ub)
         elif edge.type == 'Empirical' and edge.dtype() == 'gamma':
             alpha = edge.alpha
             beta = edge.beta
+            mode = beta*(alpha-1) if alpha >1 else 0
+            res = 0.1
+            lb = 0 
+            ub = gamma.ppf(q=0.0001, a=alpha, scale = 1/beta)
+            units = ub/res
+            X = []
+            x = lb
+            for i in range(units):
+                X.append(gamma.pdf(x, a=alpha, scale = beta))
+                x += res
+            sumW = sum(X)
+            X = [ w/sumW for w in X ]
+
+            dist = gamma(a=alpha, scale=1/beta)
+            dpGamma(mode, alpha, beta)
             # TODO change the bounding strategy for gamma distribution
-            edge.Cij = min(mu + numSig * sigma, edge.Cij)
-            edge.Cji = min(-(mu - numSig * sigma), edge.Cji)
+            # edge.Cij = min(mu + numSig * sigma, edge.Cij)
+            # edge.Cji = min(-(mu - numSig * sigma), edge.Cji)
         elif edge.isContingent():
             print("here", edge.type, edge.dtype())
             sigma = (edge.Cij + edge.Cji)/4
@@ -172,6 +182,48 @@ def getMinLossBounds(network: STN, numSig):
             edge.Cji = min(-(mu - numSig * sigma), edge.Cji)
     return network
 
+def recursiveGamma(upper, lower, alpha, beta, risk, sum, res = 0.1,):
+    if sum < 1-risk:
+        if lower>0:
+            if gamma.pdf(x=upper, a=alpha, scale=1/beta) > gamma.pdf(x=lower, a=alpha, scale=1/beta):
+                sum += gamma.pdf(x=upper, a=alpha, scale=1/beta)
+                upper += res
+                return recursiveGamma(upper, lower, alpha, beta, risk, sum,)
+            else:
+                sum += gamma.pdf(x=upper, a=alpha, scale=1/beta)
+                lower -= res
+                return recursiveGamma(upper, lower, alpha, beta, risk, sum,)
+        else:
+            sum += gamma.pdf(x=upper, a=alpha, scale=1/beta)
+            return recursiveGamma(upper + 0.2, 0, alpha, beta, risk, sum)
+    else:
+        return (lower, upper)
+
+def dpGamma(mode, alpha, beta, res = 0.1):
+    dp = []
+    lower = mode
+    upper = mode
+
+
+def minLossGamma(alpha, beta):
+    mode = beta*(alpha-1) if alpha >1 else 0
+    res = 0.1
+    lb = 0 
+    ub = gamma.ppf(q=1-0.0001, a=alpha, scale = 1/beta)
+    units = ub/res
+    X = []
+    x = lb
+    for i in range(int(units)+1):
+        X.append(gamma.pdf(x, a=alpha, scale = beta))
+        x += res
+    sumW = sum(X)
+    X = [ w/sumW for w in X ]
+    weights = {}
+    x = lb
+    for i in range(int(units)+1):
+        weights[x] = X[i]
+        x += res
+    return weights
 
 ##
 # \fn dispatch(network, dc_network, realization, contingent_map,
@@ -258,11 +310,13 @@ def dispatch(network: STN,
 
         # If the executed event was a contingent source
         if current_event in contingent_map:
+            print(current_event, "current_event is ")
             uncontrollable = contingent_map[current_event]
-            delay = realization[uncontrollable]
+            delay = realization[uncontrollable] # the length of the contingent edge
             set_time = current_time + delay
+            print("current, delay", current_time, delay)
             enabled.add(uncontrollable)
-            time_windows[uncontrollable] = [set_time, set_time]
+            time_windows[uncontrollable] = [set_time, set_time] #update the time windows for the contingent sink
 
         if is_uncontrollable:
             # Remove waits
@@ -350,6 +404,7 @@ def dispatch(network: STN,
 
     good = empirical.scheduleIsValid(network, schedule)
     if verbose:
+        print("good, ", good)
         msg = "We're safe!" if good else "We failed!"
         print(msg)
         # print(good) -> this prints T/False
@@ -380,9 +435,9 @@ def generate_realization(network: STN, dist=False) -> dict:
             elif edge.dtype() == "gamma":
                 print(edge.alpha, edge.beta)
                 generated = random.gammavariate(edge.alpha, edge.beta)
-                while generated < min(-edge.Cji, edge.Cij) or generated > max(-edge.Cji, edge.Cij):
-                    print("no")
-                    generated = random.uniform(edge.alpha, edge.beta)
+                # while generated < min(-edge.Cji, edge.Cij) or generated > max(-edge.Cji, edge.Cij):
+                #     print("no")
+                #     generated = random.uniform(edge.alpha, edge.beta)
                 realization[nodes[1]] = generated
     else:
         for nodes, edge in network.contingentEdges.items():

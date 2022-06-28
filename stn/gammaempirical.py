@@ -94,7 +94,7 @@ def fitdist(datasets:list, sizes:list, newSmapleSizes, debug = False, types='pop
             indexData = datasets.index(data)
             X = np.array(np.random.choice(a = data, size = sizes[indexData]))
             dist.fit_transform(X)
-            guessDist = (dist.model['name'], dist.model['loc'] if dist.model['name'] =='norm'else dist.model['arg'][0], dist.model['scale'], len(data), False)
+            guessDist = (dist.model['name'], dist.model['loc'] if dist.model['name'] =='norm'else dist.model['arg'][0], 1/dist.model['scale'], len(data), False)
             if plot:
                 fig, ax = dist.plot()
                 fig.show()
@@ -128,9 +128,9 @@ def gamma_sample(alpha: float, beta:float, state = None, res=1000, neg=False) ->
             ans = 0.0
             break
         if state is None:
-            ans = np.random.gamma(shape=alpha, scale=beta, size=None)
+            ans = np.random.gamma(shape=alpha, scale=1/beta, size=None)
         else:
-            ans = state.gamma(shape=alpha, scale=beta, size=None)
+            ans = state.gamma(shape=alpha, scale=1/beta, size=None)
         count += 1
     
     return ans
@@ -175,14 +175,14 @@ def gamma_curve(alpha: float, beta: float, res = 1000, neg=False):
     if ('gamma', alpha, beta, res, neg) in _samples:
         return _samples[('gamma', alpha, beta, res, neg)]
     if neg:
-        x = np.linspace(gamma.ppf(0.003, a=alpha, scale=beta),
-                        gamma.ppf(0.997, a=alpha, scale=beta),
+        x = np.linspace(gamma.ppf(0.003, a=alpha, scale=1/beta),
+                        gamma.ppf(0.997, a=alpha, scale=1/beta),
                         res)
     else:
-        x = np.linspace(max(gamma.ppf(0.003, a=alpha, scale=beta), 0.0),
-                        max(gamma.ppf(0.997, a=alpha, scale=beta), 0.0),
+        x = np.linspace(max(gamma.ppf(0.003, a=alpha, scale=1/beta), 0.0),
+                        max(gamma.ppf(0.997, a=alpha, scale=1/beta), 0.0),
                         res)
-    y = gamma.pdf(x, alpha, scale=beta)
+    y = gamma.pdf(x, alpha, scale=1/beta)
     _samples[(('gamma', alpha, beta, res, neg))] = (x,y)
 
     return(x,y)
