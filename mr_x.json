@@ -48,7 +48,7 @@
       "max_duration":30000,
       "distribution":{
         "type":"Empirical",
-        "name":"G_20_1."
+        "name":"G_2_(0.666,18)"
       },
       "first_node":1,
       "min_duration":10000
@@ -64,7 +64,7 @@
       "max_duration":42500,
       "distribution":{
         "type":"Empirical",
-        "name":"G_14_2."
+        "name":"G_3_(0.0714,0)"
       },
       "first_node":3,
       "min_duration":12500

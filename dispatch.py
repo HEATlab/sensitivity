@@ -1,3 +1,4 @@
+from os import truncate
 from stn import STN, loadSTNfromJSONfile
 from util import STNtoDCSTN, PriorityQueue
 from dc_stn import DC_STN
@@ -46,10 +47,10 @@ def simulate_and_save(file_names: list, size: int, out_name: str):
 # \brief Record dispatch result for single file
 def simulate_file(file_name, size, verbose=False, gauss=False, relaxed=False, risk=0.05) -> float:
     network = loadSTNfromJSONfile(file_name)
-    result = simulation(network, size, verbose, gauss, relaxed, risk)
+    goodie, dict_of_list, dict_of_list_zero, event_order = simulation(network, size, verbose, gauss, relaxed, risk)
     if verbose:
-        print(f"{file_name} worked {100*result}% of the time.")
-    return result
+        print(f"{file_name} worked {100*goodie}% of the time.")
+    return goodie
 
 
 ##
@@ -155,24 +156,10 @@ def getMinLossBounds(network: STN, risk):
         elif edge.type == 'Empirical' and edge.dtype() == 'gamma':
             alpha = edge.alpha
             beta = edge.beta
-            mode = beta*(alpha-1) if alpha >1 else 0
-            res = 0.1
-            lb = 0 
-            ub = gamma.ppf(q=0.0001, a=alpha, scale = 1/beta)
-            units = ub/res
-            X = []
-            x = lb
-            for i in range(units):
-                X.append(gamma.pdf(x, a=alpha, scale = beta))
-                x += res
-            sumW = sum(X)
-            X = [ w/sumW for w in X ]
-
-            dist = gamma(a=alpha, scale=1/beta)
-            dpGamma(mode, alpha, beta)
-            # TODO change the bounding strategy for gamma distribution
-            # edge.Cij = min(mu + numSig * sigma, edge.Cij)
-            # edge.Cji = min(-(mu - numSig * sigma), edge.Cji)
+            loc = float(f'{edge.loc:.2f}')
+            lower, upper = minLossGamma(alpha, beta, loc, risk, res = 0.01)
+            edge.Cij = min(upper, edge.Cij)
+            edge.Cji = min(-(lower), edge.Cji)
         elif edge.isContingent():
             print("here", edge.type, edge.dtype())
             sigma = (edge.Cij + edge.Cji)/4
@@ -182,48 +169,73 @@ def getMinLossBounds(network: STN, risk):
             edge.Cji = min(-(mu - numSig * sigma), edge.Cji)
     return network
 
-def recursiveGamma(upper, lower, alpha, beta, risk, sum, res = 0.1,):
+def recursiveGamma(upper, lower, risk, weights, sum, res = 0.01):
+    upper = float(f'{upper:.2f}')
+    lower = float(f'{lower:.2f}')
+
     if sum < 1-risk:
         if lower>0:
-            if gamma.pdf(x=upper, a=alpha, scale=1/beta) > gamma.pdf(x=lower, a=alpha, scale=1/beta):
-                sum += gamma.pdf(x=upper, a=alpha, scale=1/beta)
+            if weights[upper] >= weights[lower]:
+                sum += weights[upper]
                 upper += res
-                return recursiveGamma(upper, lower, alpha, beta, risk, sum,)
+                return recursiveGamma(upper, lower, risk, weights, sum)
             else:
-                sum += gamma.pdf(x=upper, a=alpha, scale=1/beta)
+                sum += weights[lower]
                 lower -= res
-                return recursiveGamma(upper, lower, alpha, beta, risk, sum,)
+                return recursiveGamma(upper, lower, risk, weights, sum)
         else:
-            sum += gamma.pdf(x=upper, a=alpha, scale=1/beta)
-            return recursiveGamma(upper + 0.2, 0, alpha, beta, risk, sum)
+            sum += weights[upper]
+            return recursiveGamma(upper + 0.02, 0, risk, weights, sum)
     else:
         return (lower, upper)
 
-def dpGamma(mode, alpha, beta, res = 0.1):
-    dp = []
-    lower = mode
-    upper = mode
+def bestGamma(risk, weights, units, res, mode, loc):
+    dp = [0 for i in range(units)]
+    key = 0.00
+    sumIndex = int(mode/res)
+    lower, upper = (sumIndex-1, sumIndex+1) if mode != 0.0 else (0, 1)
+    for i in range(units):
+        key = float(f'{key:.2f}')
+        dp[i] = weights[key]
+        key += res
+    sum = dp[sumIndex]
+    for i in range(units):
+        if lower == 0 or lower == loc*1000:
+            return 0, 0
+        elif dp[upper] >= dp[lower]:
+            sum += dp[upper]
+            if sum >= 1-risk:
+                return 1000*lower*res, 1000*upper*res
+            upper += 1
+        else:
+            sum += dp[lower]
+            if sum >= 1-risk:
+                return 1000*lower*res, 1000*upper*res
+            lower -=1
 
-
-def minLossGamma(alpha, beta):
-    mode = beta*(alpha-1) if alpha >1 else 0
-    res = 0.1
-    lb = 0 
-    ub = gamma.ppf(q=1-0.0001, a=alpha, scale = 1/beta)
-    units = ub/res
+def minLossGamma(alpha, beta, loc, risk, res=.01):
+    mode = float(f'{loc+1/beta*(alpha-1):.2f}') if alpha >1 else 0.00 # zero frame mode
+    theta = 1/beta
+    ub = gamma.ppf(q=0.99, a=alpha, scale = theta) + loc  # zero frame ub
+    units = round(ub/res)+1
     X = []
-    x = lb
-    for i in range(int(units)+1):
-        X.append(gamma.pdf(x, a=alpha, scale = beta))
-        x += res
-    sumW = sum(X)
-    X = [ w/sumW for w in X ]
+    lb = 0
+    for i in range(units):
+        X.append(gamma.pdf(x=lb-loc, a=alpha, scale = theta))  # zero frame 
+        lb += res
+    # get the weights for all entrances
+    X = [ w/sum(X) for w in X ]
     weights = {}
-    x = lb
-    for i in range(int(units)+1):
-        weights[x] = X[i]
+    x = 0
+    for i in range(units):
+        weights[float(f'{x:.2f}')] = X[i]
         x += res
-    return weights
+    # lower, upper = recursiveGamma(mode+res, mode-res, risk, weights, weights[float(f'{mode:.2f}')], res = 0.01)
+    lower, upper = bestGamma(risk, weights, units, res, mode, loc)
+    if upper == 0:
+        return 1000*loc, 1000*(gamma.ppf(q=1-risk, a=alpha, scale = theta) + loc)
+    else:
+        return lower, upper
 
 ##
 # \fn dispatch(network, dc_network, realization, contingent_map,
@@ -265,7 +277,7 @@ def dispatch(network: STN,
             print("\n\nNetwork looks like: ")
             print(dc_network)
 
-            # print("Realization (random pick values for contingent edges): ", realization)
+            print("Realization (random pick values for contingent edges): ", realization)
             print("Current time windows: ", time_windows)
             print("Currently enabled: ", enabled)
             print("Already executed: ", executed)
@@ -310,14 +322,14 @@ def dispatch(network: STN,
 
         # If the executed event was a contingent source
         if current_event in contingent_map:
-            print(current_event, "current_event is ")
+            # print(current_event, "current_event is ")
             uncontrollable = contingent_map[current_event]
             delay = realization[uncontrollable] # the length of the contingent edge
             set_time = current_time + delay
-            print("current, delay", current_time, delay)
+            # print("current, delay", current_time, delay, set_time)
             enabled.add(uncontrollable)
             time_windows[uncontrollable] = [set_time, set_time] #update the time windows for the contingent sink
-
+            # print(time_windows)
         if is_uncontrollable:
             # Remove waits
             original_edges = list(dc_network.upper_case_edges.items())
@@ -344,7 +356,6 @@ def dispatch(network: STN,
                 new_lower_bound = current_time - edge.weight
                 if new_lower_bound > time_windows[edge.i][0]:
                     time_windows[edge.i][0] = new_lower_bound
-
         # Add newly enabled events
         for event in not_executed:
             if verbose:
@@ -416,8 +427,7 @@ def dispatch(network: STN,
 # \brief Uniformly at random pick values for contingent edges in STNU
 def generate_realization(network: STN, dist=False) -> dict:
     realization = {}
-    if not dist:
-        print("better")
+    if dist:
         for nodes, edge in network.contingentEdges.items():
             assert edge.dtype != None
             if edge.dtype() == "gaussian":
@@ -433,11 +443,7 @@ def generate_realization(network: STN, dist=False) -> dict:
                     generated = random.uniform(edge.dist_lb, edge.dist_ub)
                 realization[nodes[1]] = generated
             elif edge.dtype() == "gamma":
-                print(edge.alpha, edge.beta)
-                generated = random.gammavariate(edge.alpha, edge.beta)
-                # while generated < min(-edge.Cji, edge.Cij) or generated > max(-edge.Cji, edge.Cij):
-                #     print("no")
-                #     generated = random.uniform(edge.alpha, edge.beta)
+                generated = 1000*(edge.loc+random.gammavariate(edge.alpha, 1/edge.beta))
                 realization[nodes[1]] = generated
     else:
         for nodes, edge in network.contingentEdges.items():
