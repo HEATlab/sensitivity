@@ -1,5 +1,6 @@
 import math
 import json
+from ast import literal_eval as make_tuple
 
 # For testing
 # import time
@@ -145,14 +146,21 @@ class Edge(object):
         name_split = self.distribution.split("_")
         if len(name_split) != 3 or name_split[0] != "G":
             raise ValueError("No alpha for non-gamma dist")
-        return float(name_split[1]) *1000
+        return float(name_split[1]) 
     
     @property
     def beta(self):
         name_split = self.distribution.split("_")
         if len(name_split) != 3 or name_split[0] != "G":
             raise ValueError("No beta for non-gamma dist")
-        return float(name_split[2]) *1000
+        return float(make_tuple(name_split[2])[0])
+
+    @property
+    def loc(self):
+        name_split = self.distribution.split("_")
+        if len(name_split) != 3 or name_split[0] != "G":
+            raise ValueError("No location for non-gamma dist")
+        return float(make_tuple(name_split[2])[1])
 
     @property
     def dist_ub(self):
