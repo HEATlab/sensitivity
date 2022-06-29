@@ -405,17 +405,22 @@ class STN(object):
         if nodeID in self.verts:
             del self.verts[nodeID]
 
+            # if the node is contingent, remove it from the uncontrollables list 
             if nodeID in self.uncontrollables:
                 self.uncontrollables.remove(nodeID)
 
+            # both the edges that start and end with the vertex need to be deleted 
             toRemove = []
             for i, j in self.edges:
                 if i == nodeID or j == nodeID:
                     toRemove += [(i, j)]
 
+            # if it is in the list of to-be deleted edges, then remove it from self.edges
             for i, j in toRemove:
                 del self.edges[(i, j)]
 
+                # if the edge that was removed was contingent, the end event of the edge 
+                # becomes no longer contingent 
                 if (i, j) in self.contingentEdges:
                     self.uncontrollables.remove(j)
                     del self.contingentEdges[(i, j)]
@@ -790,7 +795,7 @@ class STN(object):
     #
     # \details   An STN is strongly controllable if any assignment of
     #            values for executable timepoints is guaranteed to be
-    #            consistent with all constraints (irrespective osf contingent
+    #            consistent with all constraints (irrespective of contingent
     #            edges) (copied from Lund et al. 2017).
     #
     # @param debug      Flag indicating whether want to print message for debug

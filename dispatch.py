@@ -21,6 +21,37 @@ import simulation as sim
 ZERO_ID = 0
 
 
+## \class Pair_info
+#  \brief Represents the relationship
+class Pair_info(object):
+
+    ## \brief Pair_info Constructor
+    #  \param count              The number of times the row index has happened immediately after the col index
+    #  \param frequency          count/total number of simulation
+    #  \param total_run          total number of times the simulation run
+    #  \param time_differences   a list of time differences between the two events
+    #  \param distribution       guessing a type of distribution to be fitted; U for unknown, N for normal, G for gemma
+    def __init__(self, count, frequency, total_run, time_differences, distribution):
+
+        self.count = count
+        self.frequency = frequency
+        self.total_run = total_run
+        self.time_differences = time_differences
+        self.distribution = distribution
+
+    ## \brief update the pair_info 
+    #  \param time_difference    the time difference between the two vertices for a particular simulation
+    def update(self, time_difference):
+        self.count += 1
+        self.frequency = self.count/self.total_run
+        self.time_differences.append(time_difference)
+        # add: distribution fitter
+        # self.distribution = fit()
+
+    def __repr__(self):
+        return f"count: {self.count}, frequency: {self.frequency}, time difference: {self.time_differences}, distribution: {self.distribution}"
+
+
 ##
 # \fn simulate_and_save(file_names, size, out_name)
 # \brief Keep track of dispatch results on networks
@@ -36,6 +67,7 @@ def simulate_and_save(file_names: list, size: int, out_name: str):
     with open(out_name, 'w') as out_json:
         out_json.dump(rates)
     print("Results saved to", out_name)
+
 
 
 ##
@@ -85,15 +117,15 @@ def simulation(network: STN, size: int, verbose=False, gauss=False, relaxed=Fals
     dc_network.addVertex(ZERO_ID)
 
     controllability = dc_network.is_DC()
-    if verbose:
-        print("Finished checking DC...")
+    # if verbose:
+    #     print("Finished checking DC...")
 
     # Detect if the network has an inconsistency in a fixed edge
     verts = dc_network.verts.keys()
     for vert in verts:
         if (vert, vert) in dc_network.edges:
-            if verbose:
-                print("Checking", vert)
+            # if verbose:
+            #     print("Checking", vert)
             edge = dc_network.edges[vert, vert][0]
             if edge.weight < 0:
                 dc_network.edges[(vert, vert)].remove(edge)
@@ -101,18 +133,45 @@ def simulation(network: STN, size: int, verbose=False, gauss=False, relaxed=Fals
                 dc_network.verts[vert].incoming_normal.remove(edge)
                 del dc_network.normal_edges[(vert, vert)]
 
-    # Run the simulation
+    # a list of all final schedules keys 
+    final_schedule_combo = []
+    final_cont_schedule = []
+
+    # create the matrix that store the pairwise relationship between vertices
+    num = len(network.verts) if 0 in network.verts else len(network.verts) + 1
+    matrix = {}
+
+    for i in range(num):
+        row = {}
+        for j in range(num):
+            block = Pair_info(0,0,size,[],"U")
+            row['vertex_'+str(j)] = block
+        matrix['vertex_'+str(i)] = row
+    
+
+    # Run the simulation, each j is one simulation
     for j in range(size):
         realization = generate_realization(network, gauss)
         copy = dc_network.copy()
         result, final_schedule = dispatch(dispatching_network, copy, realization, contingents,
                           uncontrollables, False)
+        final_keys = list(final_schedule.keys())
+        final_schedule_combo.append(final_keys)
+
+        if verbose:
+            print(final_keys)
+
+        for i in range(len(final_keys)-1):
+            time_difference = final_schedule[final_keys[i+1]]-final_schedule[final_keys[i]]
+            matrix["vertex_"+str(final_keys[i])]["vertex_"+str(final_keys[i+1])].update(time_difference)
 
         # make a list of controllable events in the ordering of the final_schudule
         event_order = []
         for events in list(final_schedule.keys()):
             if events in uncontrollables:
                 event_order.append(events)
+        final_cont_schedule.append(event_order)
+
 
         # intializing this as 0 for the first time point to compare to 
         last_event_time = 0 
@@ -125,11 +184,21 @@ def simulation(network: STN, size: int, verbose=False, gauss=False, relaxed=Fals
         if result:
             total_victories += 1
 
+    # clean up the matrix
+    for i in range(num):
+        for j in range(num):
+            time = matrix['vertex_'+str(i)]['vertex_'+str(j)].time_differences
+            if all([t==0 for t in time]):
+                matrix['vertex_'+str(i)]['vertex_'+str(j)].time_differences = ["all zero"]
+            if matrix['vertex_'+str(i)]['vertex_'+str(j)].count == 0:
+                del matrix['vertex_'+str(i)]['vertex_'+str(j)]
+             
+
     goodie = float(total_victories / size)
     if verbose:
         print(f"Worked {100*goodie}% of the time.")
 
-    return goodie, dict_of_list, dict_of_list_zero, event_order
+    return goodie, dict_of_list, dict_of_list_zero, event_order, final_schedule, matrix
 
 ##
 # \fn getMinLossBounds(network, numSig)

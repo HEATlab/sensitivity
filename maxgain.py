@@ -212,11 +212,13 @@ if __name__ == "__main__":
         newresult = simulate_maxgain(stn, newstn,50)
         print(f"printing newresult: {newresult}")
         print('c')
-        oldresult, contingent_timept, contingent_timept_zero, event_order = simulation(stn,50, verbose = False)
-        # print(f"printing final sche: {final_schedule}")
-        print(f"printing the order of the events: {event_order}")
-        print(f"printing the dataset: {contingent_timept}")
-        print(f"printing the dataset relative to zero timepoint: {contingent_timept_zero}")
+        oldresult, contingent_timept, contingent_timept_zero, cont_event_order, final_schedule,matrix = simulation(stn,50, verbose = True)
+        print(f"printing all the final schedules: {final_schedule}\n")
+        # print(f"printing all the final schedules for cont. edges only: {final_cont_schedule}\n")
+        print(f"printing the order of the events: {cont_event_order}")
+        print(f"Hopefully this works and print matrix: {matrix}")
+        # print(f"printing the dataset: {contingent_timept}")
+        # print(f"printing the dataset relative to zero timepoint: {contingent_timept_zero}")
         print(f"printing oldresult: {oldresult}")
         # if a and oldresult < .9:
         #     bad_data += [(data, oldresult)]
