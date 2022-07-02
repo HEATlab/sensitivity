@@ -1,4 +1,3 @@
-from os import truncate
 from stn import STN, loadSTNfromJSONfile
 from util import STNtoDCSTN, PriorityQueue
 from dc_stn import DC_STN
@@ -6,8 +5,11 @@ from relax import relaxSearch
 import empirical
 import random
 import json
-import string
-import time
+import glob
+import os
+import re
+import numpy as np
+from os import truncate
 from scipy.stats import norm
 from scipy.stats import gamma
 
@@ -25,29 +27,47 @@ import simulation as sim
 ZERO_ID = 0
 
 
+def simulate_and_save_files(file_path, size:int, out_name:str, compare_path="", relaxed=False):
+    file_names = glob.glob(os.path.join(file_path, '*.json'))
+    file_names = sorted(file_names, key=lambda s: int(re.search(r'\d+', s).group()))
+    if compare_path != "":
+        compare_files = glob.glob(os.path.join(compare_path, '*.json'))
+        compare_files = sorted(compare_files, key=lambda s: int(re.search(r'\d+', s).group()))
+    else:
+        compare_files = []
+    results = simulate_and_save(file_names, size, out_name, compare_files, relaxed)
+    return results
+
 ##
 # \fn simulate_and_save(file_names, size, out_name)
 # \brief Keep track of dispatch results on networks
-def simulate_and_save(file_names: list, size: int, out_name: str):
+def simulate_and_save(file_names: list, size: int, out_name: str, compare_files=[], relaxed=False):
     rates = {}
     # Loop through files and record the dispatch success rates and
     # approximated probabilities
-    for name in file_names:
-        success_rate = simulate_file(name, size)
-        rates[name] = success_rate
+    for i in range(len(file_names)):
+        if len(compare_files) != 0:
+            compare = compare_files[i]
+        else: 
+            compare = False
+        success_rate = simulate_file(file_names[i], size, compare, relaxed)
+        rates[file_names[i]] = success_rate
+        print(file_names[i], success_rate)
 
     # Save the results
     with open(out_name, 'w') as out_json:
-        out_json.dump(rates)
-    print("Results saved to", out_name)
+        json.dump(rates, out_json)
+    print("Results saved to", out_name) 
+    return rates
 
 
 ##
 # \fn simulate_file(file_name, size)
 # \brief Record dispatch result for single file
-def simulate_file(file_name, size, verbose=False, gauss=False, relaxed=False, risk=0.05) -> float:
+def simulate_file(file_name, size, compare=False, verbose=False, gauss=True, relaxed=False, risk=0.05) -> float:
     network = loadSTNfromJSONfile(file_name)
-    goodie, dict_of_list, dict_of_list_zero, event_order = simulation(network, size, verbose, gauss, relaxed, risk)
+    compareNetwork = loadSTNfromJSONfile(compare) if compare else None
+    goodie, dict_of_list, dict_of_list_zero, event_order = simulation(network, size, compareNetwork, verbose, gauss, relaxed, risk)
     if verbose:
         print(f"{file_name} worked {100*goodie}% of the time.")
     return goodie
@@ -55,9 +75,9 @@ def simulate_file(file_name, size, verbose=False, gauss=False, relaxed=False, ri
 
 ##
 # \fn simulation(network, size)
-def simulation(network: STN, size: int, verbose=False, dist=True, relaxed=False, risk=0.05) -> float:
+def simulation(simulationNetwork: STN, size: int, strategyNetwork=None, verbose=False, dist=True, relaxed=False, risk=0.05) -> float:
     # Collect useful data from the original network
-    contingent_pairs = network.contingentEdges.keys()
+    contingent_pairs = simulationNetwork.contingentEdges.keys()
     contingents = {src: sink for (src, sink) in contingent_pairs}
     # this prints a set of uncontrollable events 
     uncontrollables = set(contingents.values())
@@ -76,24 +96,27 @@ def simulation(network: STN, size: int, verbose=False, dist=True, relaxed=False,
         dict_of_list[events] = []
         dict_of_list_zero[events] = []
 
-    times = []
-
     if relaxed:
-        times.append(time.time())
-        dispatching_network, count, cycles, weights = relaxSearch(getMinLossBounds(network.copy(), risk))
-        times.append(time.time())
+        # dispatching_network, count, cycles, weights = relaxSearch(getMinLossBounds(network.copy(), risk))
+        # dispatching_network = relaxSearch(getMinLossBounds(network.copy(), risk))[0]
+        if strategyNetwork:
+            dispatching_network = relaxSearch(getMinLossBounds(strategyNetwork, risk))[0]
+        else:
+            dispatching_network = relaxSearch(getMinLossBounds(simulationNetwork.copy(), risk))[0]
         if dispatching_network == None:
-            dispatching_network = network
+            dispatching_network = simulationNetwork.copy()
     else:
-        dispatching_network=  getMinLossBounds(network.copy(), risk)
+        if strategyNetwork:
+            dispatching_network=  getMinLossBounds(strategyNetwork, risk)
+        else:
+            dispatching_network=  getMinLossBounds(simulationNetwork.copy(), risk)
         
+        # dispatching_network = network.copy()   
+
     total_victories = 0
-    times.append(time.time())
     dc_network = STNtoDCSTN(dispatching_network)
     dc_network.addVertex(ZERO_ID)
-    controllability = dc_network.is_DC()
-    times.append(time.time())
-    
+    controllability = dc_network.is_DC()    
 
     # Detect if the network has an inconsistency in a fixed edge
     verts = dc_network.verts.keys()
@@ -110,7 +133,7 @@ def simulation(network: STN, size: int, verbose=False, dist=True, relaxed=False,
 
     # Run the simulation
     for j in range(size):
-        realization = generate_realization(network, dist)
+        realization = generate_realization(simulationNetwork, dist)
         copy = dc_network.copy()
 
         result, final_schedule = dispatch(dispatching_network, copy, realization, contingents,
@@ -128,8 +151,6 @@ def simulation(network: STN, size: int, verbose=False, dist=True, relaxed=False,
             dict_of_list_zero[events].append(round(final_schedule[events]/1000,4))
             dict_of_list[events].append(round((final_schedule[events]-last_event_time)/1000,4)) 
             last_event_time = final_schedule[events]
-
-        times.append(time.time())
 
         if verbose:
             print("Completed a simulation.")
@@ -157,9 +178,11 @@ def getMinLossBounds(network: STN, risk):
             alpha = edge.alpha
             beta = edge.beta
             loc = float(f'{edge.loc:.2f}')
-            lower, upper = minLossGamma(alpha, beta, loc, risk, res = 0.01)
-            edge.Cij = min(upper, edge.Cij)
-            edge.Cji = min(-(lower), edge.Cji)
+            lower = gamma.ppf(risk/2, a=alpha, scale = 1/beta) +loc
+            upper = gamma.ppf(1-risk/2, a=alpha, scale=1/beta) + loc
+            # lower, upper = minLossGamma(alpha, beta, loc, risk, res = 0.01)
+            edge.Cij = min(1000*upper, edge.Cij)
+            edge.Cji = min(-(1000*lower), edge.Cji)
         elif edge.isContingent():
             print("here", edge.type, edge.dtype())
             sigma = (edge.Cij + edge.Cji)/4
@@ -433,7 +456,7 @@ def generate_realization(network: STN, dist=False) -> dict:
             if edge.dtype() == "gaussian":
                 generated = random.gauss(edge.mu, edge.sigma)
                 while generated < min(-edge.Cji, edge.Cij) or generated > max(-edge.Cji, edge.Cij):
-                    print("yike")
+                    # print(generated, -edge.Cji, edge.Cij)
                     generated = random.gauss(edge.mu, edge.sigma)
                 realization[nodes[1]] = generated
             elif edge.dtype() == "uniform":
@@ -443,7 +466,7 @@ def generate_realization(network: STN, dist=False) -> dict:
                     generated = random.uniform(edge.dist_lb, edge.dist_ub)
                 realization[nodes[1]] = generated
             elif edge.dtype() == "gamma":
-                generated = 1000*(edge.loc+random.gammavariate(edge.alpha, 1/edge.beta))
+                generated = 1000*(edge.loc+np.random.gamma(edge.alpha, 1/edge.beta))
                 realization[nodes[1]] = generated
     else:
         for nodes, edge in network.contingentEdges.items():
@@ -457,4 +480,6 @@ def generate_realization(network: STN, dist=False) -> dict:
 
 if __name__ == '__main__':
     data = 'mr_x.json'
+    data2 = 'mr_x2.json'
     stn = loadSTNfromJSONfile(data)
+    stn2 = loadSTNfromJSONfile(data2)
