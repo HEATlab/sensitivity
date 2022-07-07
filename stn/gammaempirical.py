@@ -67,7 +67,7 @@ def generate_data(distributions:list, sizes:list):
         data[distribution_name] = newdata
     return data
 
-def fitdist(datasets:list, sizes:list, newSmapleSizes, debug = False, types='popular', exampleDists =[], exampleSizes=[], plot=False):
+def fitdist(datasets:list, sizes:list, newSmapleSizes, gammaFlag=True, debug = False, types='popular', exampleDists =[], exampleSizes=[], plot=False):
     """return a dictionary of distributions of a data set and new samples drawn based on the best fit distribution
         debug: test fit against a known distribution
     """
@@ -92,9 +92,20 @@ def fitdist(datasets:list, sizes:list, newSmapleSizes, debug = False, types='pop
     else:
         for data in datasets:
             indexData = datasets.index(data)
-            X = np.array(np.random.choice(a = data, size = sizes[indexData]))
+            if sizes[indexData] == len(data):
+                X = np.array(data)
+            else:
+                X = np.array(np.random.choice(a = data, size = sizes[indexData]))
             dist.fit_transform(X)
-            guessDist = (dist.model['name'], dist.model['loc'] if dist.model['name'] =='norm'else dist.model['arg'][0], dist.model['scale'], len(data), False)
+            if dist.model['name'] == 'gamma':
+                if dist.model['arg'][0] > 1000 and not gammaFlag: # alpha is too big so we can treat the distribution as approxiamtely normal
+                    dist = distfit(distr='norm')
+                    dist.fit_transform(X)
+                else:
+                    while (dist.model['arg'][0]) >1000:
+                        X = np.array(np.random.choice(a = data, size = sizes[indexData]))
+                        dist.fit_transform(X)
+            guessDist = (dist.model['name'], dist.model['loc'] if dist.model['name'] =='norm'else dist.model['arg'][0], dist.model['scale'] if dist.model['name'] =='norm' else (1/dist.model['scale'], dist.model['loc']), len(data), False)
             if plot:
                 fig, ax = dist.plot()
                 fig.show()
@@ -123,14 +134,15 @@ def gamma_sample(alpha: float, beta:float, state = None, res=1000, neg=False) ->
     """
     count = 0
     ans = -1.0
+    theta = 1/beta
     while ans < 0.0:
         if count > MAX_RESAMPLE:
             ans = 0.0
             break
         if state is None:
-            ans = np.random.gamma(shape=alpha, scale=beta, size=None)
+            ans = np.random.gamma(shape=alpha, scale=theta, size=None)
         else:
-            ans = state.gamma(shape=alpha, scale=beta, size=None)
+            ans = state.gamma(shape=alpha, scale=theta, size=None)
         count += 1
     
     return ans
@@ -172,17 +184,19 @@ def gamma_curve(alpha: float, beta: float, res = 1000, neg=False):
     """gamma pdf curve
     """
     global _samples
+    theta = 1/beta
     if ('gamma', alpha, beta, res, neg) in _samples:
         return _samples[('gamma', alpha, beta, res, neg)]
     if neg:
-        x = np.linspace(gamma.ppf(0.003, a=alpha, scale=beta),
-                        gamma.ppf(0.997, a=alpha, scale=beta),
+        theta = 1/beta
+        x = np.linspace(gamma.ppf(0.003, a=alpha, scale=theta),
+                        gamma.ppf(0.997, a=alpha, scale=theta),
                         res)
     else:
-        x = np.linspace(max(gamma.ppf(0.003, a=alpha, scale=beta), 0.0),
-                        max(gamma.ppf(0.997, a=alpha, scale=beta), 0.0),
+        x = np.linspace(max(gamma.ppf(0.003, a=alpha, scale=theta), 0.0),
+                        max(gamma.ppf(0.997, a=alpha, scale=theta), 0.0),
                         res)
-    y = gamma.pdf(x, alpha, scale=beta)
+    y = gamma.pdf(x, alpha, scale=theta)
     _samples[(('gamma', alpha, beta, res, neg))] = (x,y)
 
     return(x,y)
@@ -340,6 +354,8 @@ if __name__ == "__main__":
     doctest.testmod()
     import matplotlib.pyplot as plt
     curve = invcdf_norm_curve(1, 1)
+    data = list(generate_data([('norm', 20, 2, 1000, False)], [1000]).values())[0]
+    fits = fitdist([data], [1000], [0], plot=True, types = 'gamma', gammaFlag=True)
     # curve = gamma_curve(1, 1)    ##gamma pdf
 
     # curve = invcdf_gamma_curve(5, 1)

@@ -1,5 +1,6 @@
 import math
 import json
+from ast import literal_eval as make_tuple
 
 # For testing
 # import time
@@ -121,6 +122,8 @@ class Edge(object):
             return "uniform"
         elif self.distribution[0] == "N":
             return "gaussian"
+        elif self.distribution[0] == "G":
+            return "gamma"
         else:
             return "unknown"
 
@@ -139,11 +142,33 @@ class Edge(object):
         return float(name_split[2]) *1000
 
     @property
+    def alpha(self):
+        name_split = self.distribution.split("_")
+        if len(name_split) != 3 or name_split[0] != "G":
+            raise ValueError("No alpha for non-gamma dist")
+        return float(name_split[1]) 
+    
+    @property
+    def beta(self):
+        name_split = self.distribution.split("_")
+        if len(name_split) != 3 or name_split[0] != "G":
+            raise ValueError("No beta for non-gamma dist")
+        return float(make_tuple(name_split[2])[0])
+
+    @property
+    def loc(self):
+        name_split = self.distribution.split("_")
+        if len(name_split) != 3 or name_split[0] != "G":
+            raise ValueError("No location for non-gamma dist")
+        return float(make_tuple(name_split[2])[1])
+
+    @property
     def dist_ub(self):
         name_split = self.distribution.split("_")
         if len(name_split) != 3 or name_split[0] != "U":
             raise ValueError("No upper bound for non-uniform dist")
         return float(name_split[2]) 
+        
     @property
     def dist_lb(self):
         name_split = self.distribution.split("_")
