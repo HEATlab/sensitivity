@@ -1,3 +1,4 @@
+from typing import final
 from stn import STN, loadSTNfromJSONfile
 from util import STNtoDCSTN, PriorityQueue
 from dc_stn import DC_STN
@@ -27,7 +28,7 @@ import simulation as sim
 ZERO_ID = 0
 
 
-def simulate_and_save_files(file_path, size:int, out_name:str, compare_path="", relaxed=False):
+def simulate_and_save_files(file_path, size:int, out_name:str, compare_path="", relaxed=False, dist=False, allow=False):
     file_names = glob.glob(os.path.join(file_path, '*.json'))
     file_names = sorted(file_names, key=lambda s: int(re.search(r'\d+', s).group()))
     if compare_path != "":
@@ -35,13 +36,13 @@ def simulate_and_save_files(file_path, size:int, out_name:str, compare_path="", 
         compare_files = sorted(compare_files, key=lambda s: int(re.search(r'\d+', s).group()))
     else:
         compare_files = []
-    results = simulate_and_save(file_names, size, out_name, compare_files, relaxed)
+    results = simulate_and_save(file_names, size, out_name, compare_files, relaxed=relaxed, dist=dist)
     return results
 
 ##
 # \fn simulate_and_save(file_names, size, out_name)
 # \brief Keep track of dispatch results on networks
-def simulate_and_save(file_names: list, size: int, out_name: str, compare_files=[], relaxed=False):
+def simulate_and_save(file_names: list, size: int, out_name: str, compare_files=[], relaxed=False, dist = True, allow=False):
     rates = {}
     # Loop through files and record the dispatch success rates and
     # approximated probabilities
@@ -50,7 +51,7 @@ def simulate_and_save(file_names: list, size: int, out_name: str, compare_files=
             compare = compare_files[i]
         else: 
             compare = False
-        success_rate = simulate_file(file_names[i], size, compare, relaxed)
+        success_rate = simulate_file(file_names[i], size, compare, relaxed=relaxed, gauss=dist, allow=allow)
         rates[file_names[i]] = success_rate
         print(file_names[i], success_rate)
 
@@ -64,10 +65,10 @@ def simulate_and_save(file_names: list, size: int, out_name: str, compare_files=
 ##
 # \fn simulate_file(file_name, size)
 # \brief Record dispatch result for single file
-def simulate_file(file_name, size, compare=False, verbose=False, gauss=True, relaxed=False, risk=0.05) -> float:
+def simulate_file(file_name, size, compare=False, verbose=False, gauss=True, relaxed=False, risk=0.05, allow=False) -> float:
     network = loadSTNfromJSONfile(file_name)
     compareNetwork = loadSTNfromJSONfile(compare) if compare else None
-    goodie, dict_of_list, dict_of_list_zero, event_order = simulation(network, size, compareNetwork, verbose, gauss, relaxed, risk)
+    goodie, dict_of_list, dict_of_list_zero, event_order = simulation(network, size, compareNetwork, verbose, gauss, relaxed, risk, allow)
     if verbose:
         print(f"{file_name} worked {100*goodie}% of the time.")
     return goodie
@@ -75,7 +76,7 @@ def simulate_file(file_name, size, compare=False, verbose=False, gauss=True, rel
 
 ##
 # \fn simulation(network, size)
-def simulation(simulationNetwork: STN, size: int, strategyNetwork=None, verbose=False, dist=True, relaxed=False, risk=0.05) -> float:
+def simulation(simulationNetwork: STN, size: int, strategyNetwork=None, verbose=False, dist=True, relaxed=False, risk=0.05, allow=False) -> float:
     # Collect useful data from the original network
     contingent_pairs = simulationNetwork.contingentEdges.keys()
     contingents = {src: sink for (src, sink) in contingent_pairs}
@@ -85,7 +86,8 @@ def simulation(simulationNetwork: STN, size: int, strategyNetwork=None, verbose=
     # print("uncontrollables: ", uncontrollables)
     uncontrolled_size = len(uncontrollables)
     
-    # creating a dictionary to store all datapoints for each contingent data point - relative to last contingent timepoint
+    # creating a dictionary to store all datapoints for each contingent data point
+    # relative to last time point, whether contingent or not
     dict_of_list = {}
 
     # creating a dictionary to store all datapoints for each contingent data point - relative to the zero timepoint
@@ -96,22 +98,21 @@ def simulation(simulationNetwork: STN, size: int, strategyNetwork=None, verbose=
         dict_of_list[events] = []
         dict_of_list_zero[events] = []
 
+    if strategyNetwork:
+        guessNetwork = strategyNetwork
+    else:
+        guessNetwork = simulationNetwork.copy()
+
     if relaxed:
         # dispatching_network, count, cycles, weights = relaxSearch(getMinLossBounds(network.copy(), risk))
         # dispatching_network = relaxSearch(getMinLossBounds(network.copy(), risk))[0]
-        if strategyNetwork:
-            dispatching_network = relaxSearch(getMinLossBounds(strategyNetwork, risk))[0]
-        else:
-            dispatching_network = relaxSearch(getMinLossBounds(simulationNetwork.copy(), risk))[0]
+        dispatching_network = relaxSearch(getMinLossBounds(guessNetwork, risk))[0]
+
         if dispatching_network == None:
-            dispatching_network = simulationNetwork.copy()
+            dispatching_network = guessNetwork
     else:
-        if strategyNetwork:
-            dispatching_network=  getMinLossBounds(strategyNetwork, risk)
-        else:
-            dispatching_network=  getMinLossBounds(simulationNetwork.copy(), risk)
+        dispatching_network = guessNetwork
         
-        # dispatching_network = network.copy()   
 
     total_victories = 0
     dc_network = STNtoDCSTN(dispatching_network)
@@ -133,24 +134,31 @@ def simulation(simulationNetwork: STN, size: int, strategyNetwork=None, verbose=
 
     # Run the simulation
     for j in range(size):
-        realization = generate_realization(simulationNetwork, dist)
+        realization = generate_realization(simulationNetwork, dist, allow)
         copy = dc_network.copy()
+        final_keys = list(final_schedule.keys())
 
-        result, final_schedule = dispatch(dispatching_network, copy, realization, contingents,
+        x = dispatch(dispatching_network, copy, realization, contingents,
                           uncontrollables, verbose)
+        if x != False:
+            result, final_schedule = x
+        else:
+            return 0.0, [], [], []
 
         # make a list of controllable events in the ordering of the final_schudule
         event_order = []
-        for events in list(final_schedule.keys()):
+        for events in final_keys:
             if events in uncontrollables:
                 event_order.append(events)
 
-        # intializing this as 0 for the first time point to compare to 
-        last_event_time = 0 
-        for events in event_order:
-            dict_of_list_zero[events].append(round(final_schedule[events]/1000,4))
-            dict_of_list[events].append(round((final_schedule[events]-last_event_time)/1000,4)) 
-            last_event_time = final_schedule[events]
+        # record data point
+        for i in range(len(final_keys)):
+            if final_keys[i] in event_order:
+                dict_of_list_zero[[final_keys[i]]].append(round(final_schedule[final_keys[i]]/1000,4))
+                if i == 0:
+                    dict_of_list[final_keys[i]].append(round(final_schedule[final_keys[i]]/1000,4))
+                else:
+                    dict_of_list[final_keys[i]].append(round(final_schedule[final_keys[i]]-final_schedule[final_keys[i-1]])/1000,4)
 
         if verbose:
             print("Completed a simulation.")
@@ -364,6 +372,7 @@ def dispatch(network: STN,
         if current_event in not_executed:
             not_executed.remove(current_event)
         else:
+            print("huh")
             return False
         if current_event in enabled:
             enabled.remove(current_event)
@@ -448,25 +457,31 @@ def dispatch(network: STN,
 ##
 # \fn generate_realization(network)
 # \brief Uniformly at random pick values for contingent edges in STNU
-def generate_realization(network: STN, dist=False) -> dict:
+def generate_realization(network: STN, dist=False, allow=False) -> dict:
     realization = {}
     if dist:
         for nodes, edge in network.contingentEdges.items():
             assert edge.dtype != None
             if edge.dtype() == "gaussian":
                 generated = random.gauss(edge.mu, edge.sigma)
-                while generated < min(-edge.Cji, edge.Cij) or generated > max(-edge.Cji, edge.Cij):
-                    # print(generated, -edge.Cji, edge.Cij)
-                    generated = random.gauss(edge.mu, edge.sigma)
+                if not allow:
+                    while generated < min(-edge.Cji, edge.Cij) or generated > max(-edge.Cji, edge.Cij):
+                        # print(generated, -edge.Cji, edge.Cij)
+                        generated = random.gauss(edge.mu, edge.sigma)
                 realization[nodes[1]] = generated
             elif edge.dtype() == "uniform":
                 generated = random.uniform(edge.dist_lb, edge.dist_ub)
-                while generated < min(-edge.Cji, edge.Cij) or generated > max(-edge.Cji, edge.Cij):
-                    print("oop")
-                    generated = random.uniform(edge.dist_lb, edge.dist_ub)
+                if not allow:
+                    while generated < min(-edge.Cji, edge.Cij) or generated > max(-edge.Cji, edge.Cij):
+                        print("oop")
+                        generated = random.uniform(edge.dist_lb, edge.dist_ub)
                 realization[nodes[1]] = generated
             elif edge.dtype() == "gamma":
-                generated = 1000*(edge.loc+np.random.gamma(edge.alpha, 1/edge.beta))
+                rand = np.random.gamma(edge.alpha, 1/edge.beta)
+                generated = 1000*(edge.loc+rand)
+                if not allow:
+                    while generated < min(-edge.Cji, edge.Cij) or generated > max(-edge.Cji, edge.Cij):
+                        generated = 1000*(edge.loc+np.random.gamma(edge.alpha, 1/edge.beta))
                 realization[nodes[1]] = generated
     else:
         for nodes, edge in network.contingentEdges.items():

@@ -3,6 +3,7 @@ import json
 from logging import raiseExceptions
 import math
 import os
+from scipy.stats import gamma
 
 def changetimes(data_path):
     data_list = glob.glob(os.path.join(data_path, '*.json'))
@@ -38,14 +39,13 @@ def changeSingleTime(testJson):
 def changeSingleGamma(testJson):
     with open(testJson, 'r') as f:
         jsonSTN = json.loads(f.read())
-        print(jsonSTN)
         for e in jsonSTN['constraints']:
             if e['type'] == 'pstc' and 'distribution' in e:
                 name_split = e['distribution']['name'].split("_")
                 loc = e['min_duration']/1000
                 mean = float(name_split[1]) - loc
-                spread = (e['max_duration'] - e['min_duration'])/1000
-                if spread == 0:
+                sigma = (e['max_duration'] - e['min_duration'])/1000/10
+                if sigma == 0:
                     e = {
                         "first_node": e['first_node'],
                         "second_node": e['second_node'],
@@ -54,8 +54,11 @@ def changeSingleGamma(testJson):
                         "max_duration": e['max_duration']
                     },
                 else:
-                    beta = spread/mean
-                    alpha = mean/beta 
+                    variance = sigma*sigma
+                    beta = 1
+                    alpha = sigma*sigma 
+                    leftBound = gamma.ppf(q= 0.0000000001, a=alpha, scale = 1)
+                    loc -= leftBound
                     e['distribution'] = {
                         "name": "G_"+str(alpha)+"_("+str(1/beta)+","+str(loc) +")",
                         "type": "Empirical"
