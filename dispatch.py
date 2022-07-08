@@ -1,4 +1,6 @@
 from typing import final
+
+from yaml import load
 from stn import STN, loadSTNfromJSONfile
 from util import STNtoDCSTN, PriorityQueue
 from dc_stn import DC_STN
@@ -72,7 +74,7 @@ class Pair_info(object):
 ##
 # \fn simulate_and_save(file_names, size, out_name)
 # \brief Keep track of dispatch results on networks
-def simulate_and_save(file_names: list, size: int, out_name: str, compare_files=[], relaxed=False, dist = True, allow=False):
+def simulate_and_save(file_names: list, size: int, out_name: str, compare_files=[], relaxed=True, dist = True, allow=True):
     rates = {}
     # Loop through files and record the dispatch success rates and
     # approximated probabilities
@@ -94,7 +96,7 @@ def simulate_and_save(file_names: list, size: int, out_name: str, compare_files=
 ##
 # \fn simulate_file(file_name, size)
 # \brief Record dispatch result for single file
-def simulate_file(file_name, size, compare=False, verbose=False, gauss=True, relaxed=False, risk=0.05, allow=False) -> float:
+def simulate_file(file_name, size, compare=False, verbose=False, gauss=True, relaxed=False, risk=0.05, allow=True) -> float:
     network = loadSTNfromJSONfile(file_name)
     compareNetwork = loadSTNfromJSONfile(compare) if compare else None
     goodie, dict_of_list, dict_of_list_zero, event_order = simulation(network, size, compareNetwork, verbose, gauss, relaxed, risk, allow)
@@ -104,7 +106,7 @@ def simulate_file(file_name, size, compare=False, verbose=False, gauss=True, rel
 
 ##
 # \fn simulation(network, size)
-def simulation(simulationNetwork: STN, size: int, strategyNetwork=None, verbose=False, dist=True, relaxed=False, risk=0.05, allow=False) -> float:
+def simulation(simulationNetwork: STN, size: int, strategyNetwork=None, verbose=False, dist=True, relaxed=False, risk=0.05, allow=True) -> float:
     # Collect useful data from the original network
     contingent_pairs = simulationNetwork.contingentEdges.keys()
     contingents = {src: sink for (src, sink) in contingent_pairs}
@@ -182,9 +184,10 @@ def simulation(simulationNetwork: STN, size: int, strategyNetwork=None, verbose=
     # Run the simulation, each j is one simulation
     for j in range(size):
         realization = generate_realization(simulationNetwork, dist, allow)
+        print("simulated realization is,",realization)
         copy = dc_network.copy()
 
-        x = dispatch(dispatching_network, copy, realization, contingents,
+        x = dispatch(simulationNetwork, copy, realization, contingents,
                           uncontrollables, False)
         if x != False:
             result, final_schedule = x
@@ -401,16 +404,17 @@ def dispatch(network: STN,
                                 continue
                             lower_bound = max(lower_bound,
                                               schedule[edge.j] - edge.weight)
-
                 if lower_bound < min_time:
                     min_time = lower_bound
                     current_event = event
+            print("time_windows",time_windows)
 
         is_uncontrollable = current_event in uncontrollable_events
 
         if verbose:
             if is_uncontrollable:
                 print("This event is uncontrollable!")
+        print("debugging info ",current_event, min_time, event, is_uncontrollable)
         current_time = min_time
         schedule[current_event] = current_time
         if verbose:
@@ -426,7 +430,8 @@ def dispatch(network: STN,
             # print("current, delay", current_time, delay, set_time)
             enabled.add(uncontrollable)
             time_windows[uncontrollable] = [set_time, set_time] #update the time windows for the contingent sink
-            # print(time_windows)
+            print("time:", time_windows)
+
         if is_uncontrollable:
             # Remove waits
             original_edges = list(dc_network.upper_case_edges.items())
@@ -449,11 +454,16 @@ def dispatch(network: STN,
             if edge.i == current_event:
                 new_upper_bound = edge.weight + current_time
                 if new_upper_bound < time_windows[edge.j][1]:
+                    print("wierd")
                     time_windows[edge.j][1] = new_upper_bound
+                    print(time_windows)
             if edge.j == current_event:
                 new_lower_bound = current_time - edge.weight
                 if new_lower_bound > time_windows[edge.i][0]:
+                    print("wierd too")
                     time_windows[edge.i][0] = new_lower_bound
+                    print(time_windows)
+
         # Add newly enabled events
         for event in not_executed:
             if verbose:
@@ -523,7 +533,7 @@ def dispatch(network: STN,
 ##
 # \fn generate_realization(network)
 # \brief Uniformly at random pick values for contingent edges in STNU
-def generate_realization(network: STN, dist=False, allow=False) -> dict:
+def generate_realization(network: STN, dist=False, allow=True) -> dict:
     realization = {}
     if dist:
         for nodes, edge in network.contingentEdges.items():
@@ -564,3 +574,4 @@ if __name__ == '__main__':
     data2 = 'mr_x2.json'
     stn = loadSTNfromJSONfile(data)
     stn2 = loadSTNfromJSONfile(data2)
+    stn3 = loadSTNfromJSONfile('mr_x3.json')

@@ -18,7 +18,6 @@ _empiricalData = {}
 
 MAX_RESAMPLE = 10
 
-
 def collect_data(rundir):
     """Unimplemented function intended for empirical data collection"""
     pass
@@ -67,7 +66,7 @@ def generate_data(distributions:list, sizes:list):
         data[distribution_name] = newdata
     return data
 
-def fitdist(datasets:list, sizes:list, newSmapleSizes, gammaFlag=True, debug = False, types='popular', exampleDists =[], exampleSizes=[], plot=False):
+def fitdist(datasets:list, sizes:list, gammaFlag=True, debug = False, types='popular', exampleDists =[], exampleSizes=[], plot=False):
     """return a dictionary of distributions of a data set and new samples drawn based on the best fit distribution
         debug: test fit against a known distribution
     """
@@ -84,13 +83,11 @@ def fitdist(datasets:list, sizes:list, newSmapleSizes, gammaFlag=True, debug = F
             fig.show()
             summary, ax2 = dist.plot_summary()
             summary.show()
-            if newSmapleSizes[indexDist] != 0:
-                newData = dist.generate(newSmapleSizes[indexDist])
-                fits[distribution_name] = (guessDist, dist.model, newData )
-            else:
-                fits[distribution_name] = (guessDist, dist.model, [])
+            fits[distribution_name] = (guessDist, dist.model)
     else:
         for data in datasets:
+            if type(data) == float or type(data) == int:
+                data = [data]
             indexData = datasets.index(data)
             if sizes[indexData] == len(data):
                 X = np.array(data)
@@ -109,11 +106,8 @@ def fitdist(datasets:list, sizes:list, newSmapleSizes, gammaFlag=True, debug = F
             if plot:
                 fig, ax = dist.plot()
                 fig.show()
-            if newSmapleSizes[indexData] != 0:
-                newData = dist.generate(newSmapleSizes[indexData])
-                fits[guessDist] = (dist.model, newData)
-            else:
-                fits[guessDist] = (dist.model, [])
+            fits[guessDist] = (dist.model)
+            
     return fits
 
 def predict_sample(distribution_name, data:list, plot=False):
