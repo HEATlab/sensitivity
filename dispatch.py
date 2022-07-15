@@ -1,3 +1,4 @@
+import math
 from stn import STN, loadSTNfromJSONfile
 from util import STNtoDCSTN, PriorityQueue
 from dc_stn import DC_STN
@@ -22,7 +23,6 @@ import simulation as sim
 #       https://pdfs.semanticscholar.org/0313/af826f45d090a63fd5d787c92321666115c8.pd
 
 ZERO_ID = 0
-
 
 ## \class Pair_info
 #  \brief Represents the relationship
@@ -117,7 +117,6 @@ def simulation(simulationNetwork: STN, size: int, strategy=None, verbose=False, 
 
     if relaxed:
         # dispatching_network, count, cycles, weights = relaxSearch(getMinLossBounds(network.copy(), risk))
-        # dispatching_network = relaxSearch(getMinLossBounds(network.copy(), risk))[0]
         dispatching_network = relaxSearch(getMinLossBounds(guessNetwork, risk, gammaDict, strategy))[0]
 
         if dispatching_network == None:
@@ -160,7 +159,6 @@ def simulation(simulationNetwork: STN, size: int, strategy=None, verbose=False, 
             block = Pair_info(0,0,size,[],"U")
             row['vertex_'+str(j)] = block
         matrix['vertex_'+str(i)] = row
-    
 
     # Run the simulation, each j is one simulation
     for j in range(size):
@@ -176,9 +174,6 @@ def simulation(simulationNetwork: STN, size: int, strategy=None, verbose=False, 
             return 0.0, [], [], []
         final_keys = list(final_schedule.keys())
         final_schedule_combo.append(final_keys)
-
-        if verbose:
-            print(final_keys)
 
         for i in range(len(final_keys)-1):
             time_difference = final_schedule[final_keys[i+1]]-final_schedule[final_keys[i]]
@@ -230,30 +225,33 @@ def getMinLossBounds(network: STN, risk, gammaDict={}, strategy=None):
         if edge.type == 'Empirical' and edge.dtype() == 'gaussian':
             sigma = edge.sigma
             mu = edge.mu
-            edge.Cij = min(mu + numSig * sigma, edge.Cij)
-            edge.Cji = min(-(mu - numSig * sigma), edge.Cji)
+            if not strategy:
+                edge.Cij = min(mu + numSig * sigma, edge.Cij)
+                edge.Cji = min(-(mu - numSig * sigma), edge.Cji)
+            elif strategy == 'gamma':
+                upper = norm.ppf(q = 1-risk, loc=mu, scale=sigma) 
+                edge.Cij = min(upper, edge.Cij)
+                # edge.Cji = min(-(lower), edge.Cji)
         elif edge.type == 'Empirical' and edge.dtype() == 'gamma':
             alpha = edge.alpha
             beta = edge.beta
             alphaKey = float(f'{alpha:.2f}')
             betaKey = float(f'{beta:.2f}')
             loc = float(f'{edge.loc:.1f}')
-            # print(risk)
-            # upper = (gamma.ppf(q=0.999, a= alpha, scale=1/beta) +loc)*1000
-            # lower = (gamma.ppf(q=risk, a= alpha, scale=1/beta) +loc)*1000
-            # print(upper, lower)
 
             if not strategy:
-                if (alphaKey, betaKey) in gammaDict:
-                    lower, upper, locPrev = gammaDict[(alphaKey, betaKey)]
-                    lower = lower - locPrev + loc*1000
-                    upper = upper - locPrev + loc*1000
-                else:
-                    lower, upper = minLossGamma(alpha, beta, loc, risk, res = 0.1)
-                    gammaDict[(alphaKey, betaKey)] = (lower, upper, loc*1000)
+                upper = (gamma.ppf(q=0.9999, a= alpha, scale=1/beta) +loc)*1000
+                lower = (gamma.ppf(q=risk, a= alpha, scale=1/beta) +loc)*1000
+                # if (alphaKey, betaKey) in gammaDict:
+                #     lower, upper, locPrev = gammaDict[(alphaKey, betaKey)]
+                #     lower = lower - locPrev + loc*1000
+                #     upper = upper - locPrev + loc*1000
+                # else:
+                #     lower, upper = minLossGamma(alpha, beta, loc, risk, res = 0.1)
+                #     gammaDict[(alphaKey, betaKey)] = (lower, upper, loc*1000)
             elif strategy == 'normal':
-                lower = (gamma.ppf(q=0.025, a=alpha, scale=1/beta)+loc)*1000
-                upper = (gamma.ppf(q=0.975, a=alpha, scale=1/beta)+loc)*1000
+                lower = (gamma.ppf(q=risk/2, a=alpha, scale=1/beta)+loc)*1000
+                upper = (gamma.ppf(q=1-risk/2, a=alpha, scale=1/beta)+loc)*1000
             edge.Cij = min(upper, edge.Cij)
             edge.Cji = min(-(lower), edge.Cji)
         elif edge.isContingent():

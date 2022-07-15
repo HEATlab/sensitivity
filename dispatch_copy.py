@@ -26,7 +26,6 @@ ZERO_ID = 0
 ## \class Pair_info
 #  \brief Represents the relationship
 class Pair_info(object):
-
     ## \brief Pair_info Constructor
     #  \param count              The number of times the row index has happened immediately after the col index
     #  \param frequency          count/total number of simulation
@@ -34,7 +33,6 @@ class Pair_info(object):
     #  \param time_differences   a list of time differences between the two events
     #  \param distribution       guessing a type of distribution to be fitted; U for unknown, N for normal, G for gemma
     def __init__(self, count, frequency, total_run, time_differences, distribution):
-
         self.count = count
         self.frequency = frequency
         self.total_run = total_run
@@ -198,24 +196,13 @@ def simulation(simulationNetwork: STN, size: int, strategy=None, verbose=False, 
         for src in contingents:
             sink = contingents[src]
             if (src, sink) in contingent_time_difference:
-                contingent_time_difference[(src, sink)].append(final_schedule[sink] - final_schedule[src])
+                contingent_time_difference[(src, sink)].append((final_schedule[sink] - final_schedule[src])/1000)
             else:
-                contingent_time_difference[(src, sink)]=[final_schedule[sink] - final_schedule[src]]
+                contingent_time_difference[(src, sink)]=[(final_schedule[sink] - final_schedule[src])/1000]
 
-        orderChanged = False
         if j >= 20 and j == check:
-            print(check)
-            print("changed", j, dispatching_network)
-            dispatching_network, orderChanged, newCheck = updateDispatch(dispatching_network, contingent_time_difference, check)
+            dispatching_network, newCheck = updateDispatch(dispatching_network, contingent_time_difference, check)
             check = newCheck
-            print(check)
-            print(j, dispatching_network)
-        # if orderChanged:
-        #     # update the contingent map and pairs
-        #     contingent_pairs = dispatching_network.contingentEdges.keys()
-        #     contingents = {src: sink for (src, sink) in contingent_pairs}
-        #     uncontrollables = set(contingents.values())
-        #     recalculatePastData(dispatching_network)
 
         if verbose:
             print("Completed a simulation.")
@@ -252,25 +239,18 @@ def updateDispatch(dispatching_network, time_difference, check):
             distribution = list(fits.keys())[0]
             name, firstPar, secondPar, size, negative = distribution
             score = fits[distribution]['score']
-            if score <= 1.0:
+            if score <= 0.005:
+                gap += 80
+            elif score <= 1:
                 gap += 60
-            elif score <= 10:
-                gap += 40
             else:
-                gap += 20
+                gap += 40
             if name =='norm':
                 setattr(edge, 'distribution', 'N_'+str(firstPar/1000)+'_'+str(secondPar/1000))
             elif name == 'gamma':
                 beta, loc = secondPar
-                setattr(edge, 'distribution', 'G_'+str(firstPar/1000)+'_('+str(beta)+', '+str(loc/1000)+')')
-
-    orderChanged = False
-    print("new gap is ", gap/count, count, check+gap/count)
-    return new_dispatch, orderChanged, int(check+gap/count)
-
-
-def recalculatePastData(dispatching_network):
-    return dispatching_network
+                setattr(edge, 'distribution', 'G_'+str(firstPar)+'_('+str(beta)+', '+str(loc)+')')
+    return new_dispatch, int(check+gap/count)
 
 def dcInconsistency(dispatching_network:STN):
     dc_network = STNtoDCSTN(dispatching_network)

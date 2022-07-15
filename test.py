@@ -183,7 +183,7 @@ def simulation(simulationNetwork: STN, size: int, strategyNetwork=None, verbose=
         realization = generate_realization(simulationNetwork, dist, allow)
         copy = dc_network.copy()
 
-        x = dispatch(dispatching_network, copy, realization, contingents,
+        x = dispatch(simulationNetwork, copy, realization, contingents,
                           uncontrollables, False)
         if x != False:
             result, final_schedule = x
@@ -425,7 +425,7 @@ def dispatch(network: STN,
             # print("current, delay", current_time, delay, set_time)
             enabled.add(uncontrollable)
             time_windows[uncontrollable] = [set_time, set_time] #update the time windows for the contingent sink
-            # print(time_windows)
+
         if is_uncontrollable:
             # Remove waits
             original_edges = list(dc_network.upper_case_edges.items())
@@ -437,7 +437,6 @@ def dispatch(network: STN,
         if current_event in not_executed:
             not_executed.remove(current_event)
         else:
-            print("huh")
             return False
         if current_event in enabled:
             enabled.remove(current_event)
@@ -453,6 +452,7 @@ def dispatch(network: STN,
                 new_lower_bound = current_time - edge.weight
                 if new_lower_bound > time_windows[edge.i][0]:
                     time_windows[edge.i][0] = new_lower_bound
+        
         # Add newly enabled events
         for event in not_executed:
             if verbose:
@@ -510,12 +510,11 @@ def dispatch(network: STN,
         # print("uncontrollable is: ")
         # print(uncontrollable_events)
 
-    good = empirical.scheduleIsValid(network, schedule) 
-
     for event in contingent_map:
         sink = contingent_map[event]
         schedule[sink] = schedule[event]+realization[sink]
-    
+
+    good = empirical.scheduleIsValid(network, schedule)
 
     if verbose:
         print("good, ", good)
