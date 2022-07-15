@@ -18,7 +18,6 @@ _empiricalData = {}
 
 MAX_RESAMPLE = 10
 
-
 def collect_data(rundir):
     """Unimplemented function intended for empirical data collection"""
     pass
@@ -67,7 +66,7 @@ def generate_data(distributions:list, sizes:list):
         data[distribution_name] = newdata
     return data
 
-def fitdist(datasets:list, sizes:list, newSmapleSizes, gammaFlag=True, debug = False, types='popular', exampleDists =[], exampleSizes=[], plot=False):
+def fitdist(datasets:list, sizes:list, gammaFlag=True, debug = False, types='popular', exampleDists =[], exampleSizes=[], plot=False):
     """return a dictionary of distributions of a data set and new samples drawn based on the best fit distribution
         debug: test fit against a known distribution
     """
@@ -84,36 +83,31 @@ def fitdist(datasets:list, sizes:list, newSmapleSizes, gammaFlag=True, debug = F
             fig.show()
             summary, ax2 = dist.plot_summary()
             summary.show()
-            if newSmapleSizes[indexDist] != 0:
-                newData = dist.generate(newSmapleSizes[indexDist])
-                fits[distribution_name] = (guessDist, dist.model, newData )
-            else:
-                fits[distribution_name] = (guessDist, dist.model, [])
+            fits[distribution_name] = (guessDist, dist.model)
     else:
         for data in datasets:
+            if type(data) == float or type(data) == int:
+                data = [data]
             indexData = datasets.index(data)
             if sizes[indexData] == len(data):
                 X = np.array(data)
             else:
                 X = np.array(np.random.choice(a = data, size = sizes[indexData]))
-            dist.fit_transform(X)
+            dist.fit_transform(X, verbose=1)
             if dist.model['name'] == 'gamma':
-                if dist.model['arg'][0] > 1000 and not gammaFlag: # alpha is too big so we can treat the distribution as approxiamtely normal
+                if dist.model['arg'][0] > 40 and not gammaFlag: # alpha is too big so we can treat the distribution as approxiamtely normal
                     dist = distfit(distr='norm')
-                    dist.fit_transform(X)
+                    dist.fit_transform(X, verbose=1)
                 else:
-                    while (dist.model['arg'][0]) >1000:
+                    while (dist.model['arg'][0]) > 40: # we would want a smaller gamma
                         X = np.array(np.random.choice(a = data, size = sizes[indexData]))
-                        dist.fit_transform(X)
+                        dist.fit_transform(X, verbose=1)
             guessDist = (dist.model['name'], dist.model['loc'] if dist.model['name'] =='norm'else dist.model['arg'][0], dist.model['scale'] if dist.model['name'] =='norm' else (1/dist.model['scale'], dist.model['loc']), len(data), False)
             if plot:
                 fig, ax = dist.plot()
                 fig.show()
-            if newSmapleSizes[indexData] != 0:
-                newData = dist.generate(newSmapleSizes[indexData])
-                fits[guessDist] = (dist.model, newData)
-            else:
-                fits[guessDist] = (dist.model, [])
+            fits[guessDist] = (dist.model)
+            
     return fits
 
 def predict_sample(distribution_name, data:list, plot=False):
@@ -355,7 +349,7 @@ if __name__ == "__main__":
     import matplotlib.pyplot as plt
     curve = invcdf_norm_curve(1, 1)
     data = list(generate_data([('norm', 20, 2, 1000, False)], [1000]).values())[0]
-    fits = fitdist([data], [1000], [0], plot=True, types = 'gamma', gammaFlag=True)
+    fits = fitdist([data], [1000], [0], plot=True, types = 'gamma')
     # curve = gamma_curve(1, 1)    ##gamma pdf
 
     # curve = invcdf_gamma_curve(5, 1)

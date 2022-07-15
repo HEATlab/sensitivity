@@ -1,0 +1,282 @@
+[
+    [
+        "dataset/PSTNS_gamma/test3.json",
+        "head: ",
+        0.835,
+        "mid: ",
+        0.4
+    ],
+    [
+        "dataset/PSTNS_gamma/test4.json",
+        "head: ",
+        0.995,
+        "mid: ",
+        0.99
+    ],
+    [
+        "dataset/PSTNS_gamma/test6.json",
+        "head: ",
+        1.0,
+        "mid: ",
+        0.99
+    ],
+    [
+        "dataset/PSTNS_gamma/test11.json",
+        "head: ",
+        0.97,
+        "mid: ",
+        0.6
+    ],
+    [
+        "dataset/PSTNS_gamma/test13.json",
+        "head: ",
+        0.915,
+        "mid: ",
+        0.0
+    ],
+    [
+        "dataset/PSTNS_gamma/test25.json",
+        "head: ",
+        0.905,
+        "mid: ",
+        0.39
+    ],
+    [
+        "dataset/PSTNS_gamma/test31.json",
+        "head: ",
+        1.0,
+        "mid: ",
+        0.995
+    ],
+    [
+        "dataset/PSTNS_gamma/test37.json",
+        "head: ",
+        0.995,
+        "mid: ",
+        0.98
+    ],
+    [
+        "dataset/PSTNS_gamma/test43.json",
+        "head: ",
+        1.0,
+        "mid: ",
+        0.995
+    ],
+    [
+        "dataset/PSTNS_gamma/test58.json",
+        "head: ",
+        0.935,
+        "mid: ",
+        0.64
+    ],
+    [
+        "dataset/PSTNS_gamma/test66.json",
+        "head: ",
+        0.975,
+        "mid: ",
+        0.655
+    ],
+    [
+        "dataset/PSTNS_gamma/test68.json",
+        "head: ",
+        0.86,
+        "mid: ",
+        0.845
+    ],
+    [
+        "dataset/PSTNS_gamma/test80.json",
+        "head: ",
+        0.94,
+        "mid: ",
+        0.89
+    ],
+    [
+        "dataset/PSTNS_gamma/test81.json",
+        "head: ",
+        0.935,
+        "mid: ",
+        0.61
+    ],
+    [
+        "dataset/PSTNS_gamma/test82.json",
+        "head: ",
+        0.135,
+        "mid: ",
+        0.125
+    ],
+    [
+        "dataset/PSTNS_gamma/test93.json",
+        "head: ",
+        0.995,
+        "mid: ",
+        0.61
+    ],
+    [
+        "dataset/PSTNS_gamma/test99.json",
+        "head: ",
+        0.9,
+        "mid: ",
+        0.695
+    ],
+    [
+        "dataset/PSTNS_gamma/test102.json",
+        "head: ",
+        0.985,
+        "mid: ",
+        0.0
+    ],
+    [
+        "dataset/PSTNS_gamma/test107.json",
+        "head: ",
+        0.98,
+        "mid: ",
+        0.975
+    ],
+    [
+        "dataset/PSTNS_gamma/test108.json",
+        "head: ",
+        1.0,
+        "mid: ",
+        0.995
+    ],
+    [
+        "dataset/PSTNS_gamma/test115.json",
+        "head: ",
+        0.005,
+        "mid: ",
+        0.0
+    ],
+    [
+        "dataset/PSTNS_gamma/test117.json",
+        "head: ",
+        0.005,
+        "mid: ",
+        0.0
+    ],
+    [
+        "dataset/PSTNS_gamma/test118.json",
+        "head: ",
+        0.92,
+        "mid: ",
+        0.485
+    ],
+    [
+        "dataset/PSTNS_gamma/test125.json",
+        "head: ",
+        0.99,
+        "mid: ",
+        0.94
+    ],
+    [
+        "dataset/PSTNS_gamma/test127.json",
+        "head: ",
+        0.985,
+        "mid: ",
+        0.98
+    ],
+    [
+        "dataset/PSTNS_gamma/test132.json",
+        "head: ",
+        0.955,
+        "mid: ",
+        0.38
+    ],
+    [
+        "dataset/PSTNS_gamma/test133.json",
+        "head: ",
+        1.0,
+        "mid: ",
+        0.995
+    ],
+    [
+        "dataset/PSTNS_gamma/test136.json",
+        "head: ",
+        1.0,
+        "mid: ",
+        0.995
+    ],
+    [
+        "dataset/PSTNS_gamma/test140.json",
+        "head: ",
+        0.965,
+        "mid: ",
+        0.66
+    ],
+    [
+        "dataset/PSTNS_gamma/test145.json",
+        "head: ",
+        0.95,
+        "mid: ",
+        0.74
+    ],
+    [
+        "dataset/PSTNS_gamma/test148.json",
+        "head: ",
+        1.0,
+        "mid: ",
+        0.995
+    ],
+    [
+        "dataset/PSTNS_gamma/test149.json",
+        "head: ",
+        0.185,
+        "mid: ",
+        0.105
+    ],
+    [
+        "dataset/PSTNS_gamma/test150.json",
+        "head: ",
+        0.835,
+        "mid: ",
+        0.425
+    ],
+    [
+        "dataset/PSTNS_gamma/test151.json",
+        "head: ",
+        1.0,
+        "mid: ",
+        0.985
+    ],
+    [
+        "dataset/PSTNS_gamma/test152.json",
+        "head: ",
+        1.0,
+        "mid: ",
+        0.995
+    ],
+    [
+        "dataset/PSTNS_gamma/test153.json",
+        "head: ",
+        0.97,
+        "mid: ",
+        0.76
+    ],
+    [
+        "dataset/PSTNS_gamma/test155.json",
+        "head: ",
+        1.0,
+        "mid: ",
+        0.995
+    ],
+    [
+        "dataset/PSTNS_gamma/test160.json",
+        "head: ",
+        0.945,
+        "mid: ",
+        0.58
+    ],
+    [
+        "dataset/PSTNS_gamma/test161.json",
+        "head: ",
+        0.995,
+        "mid: ",
+        0.985
+    ],
+    [
+        "dataset/PSTNS_gamma/test165.json",
+        "head: ",
+        0.805,
+        "mid: ",
+        0.655
+    ]
+]

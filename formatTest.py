@@ -58,7 +58,7 @@ def changeSingleGamma(testJson):
                     beta = 1
                     alpha = sigma*sigma 
                     leftBound = gamma.ppf(q= 0.0000000001, a=alpha, scale = 1)
-                    loc -= leftBound
+                    loc += leftBound
                     e['distribution'] = {
                         "name": "G_"+str(alpha)+"_("+str(1/beta)+","+str(loc) +")",
                         "type": "Empirical"

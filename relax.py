@@ -242,10 +242,10 @@ def relaxSearch(STN):
                 continue
 
             edge = STN.contingentEdges[(i, j)]
-            if bounds['contingent'][(i, j)][1] == 'UPPER':
-                STN.modifyEdge(i, j, edge.Cij - epsilons[j])
-            else:
-                STN.modifyEdge(j, i, edge.Cji - epsilons[j])
+            # if bounds['contingent'][(i, j)][1] == 'UPPER':
+            STN.modifyEdge(i, j, edge.Cij - epsilons[j])
+            # else:
+            #     STN.modifyEdge(j, i, edge.Cji - epsilons[j])
 
         count += 1
         result, conflicts, bounds, weight = DC_Checker(
