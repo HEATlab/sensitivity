@@ -242,12 +242,6 @@ def relaxSearch(STN):
                 continue
 
             edge = STN.contingentEdges[(i, j)]
-            # if edge.dtype()=='gamma' and edge.alpha <=  1:
-            #     STN.modifyEdge(i, j, edge.Cij - epsilons[j])
-            # else:
-            #     STN.modifyEdge(i, j, edge.Cij - epsilons[j]/2)
-            #     STN.modifyEdge(i, j, edge.Cji - epsilons[j]/2)
-            # else: 
             if bounds['contingent'][(i, j)][1] == 'UPPER':
                 STN.modifyEdge(i, j, edge.Cij - epsilons[j])
             else:

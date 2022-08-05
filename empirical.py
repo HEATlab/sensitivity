@@ -181,17 +181,18 @@ def scheduleIsValid(network: STN, schedule: dict) -> STN:
     edges = network.getAllEdges()
     for edge in edges:
         # Loop through the constraints
-        start = edge.i
-        fin   = edge.j
-        uBound = edge.Cij
-        lBound = -edge.Cji
+        if edge.type =='stc' or edge.type== None:
+            start = edge.i
+            fin   = edge.j
+            uBound = edge.Cij
+            lBound = -edge.Cji
 
-        boundedAbove = (schedule[fin] - schedule[start]) <= uBound + epsilon
-        boundedBelow = (schedule[fin] - schedule[start]) >= lBound - epsilon
+            boundedAbove = (schedule[fin] - schedule[start]) <= uBound + epsilon
+            boundedBelow = (schedule[fin] - schedule[start]) >= lBound - epsilon
 
-        # Check if constraint is not satisfied
-        if ((not boundedAbove) or (not boundedBelow)):
-            return False
+            # Check if constraint is not satisfied
+            if ((not boundedAbove) or (not boundedBelow)):
+                return False
 
     return True
 

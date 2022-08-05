@@ -23,6 +23,11 @@ import simulation as sim
 #       https://pdfs.semanticscholar.org/0313/af826f45d090a63fd5d787c92321666115c8.pd
 
 ZERO_ID = 0
+normal169 = glob.glob(os.path.join('dataset/PSTNS_normal', '*.json'))
+gamma169 = glob.glob(os.path.join('dataset/PSTNS_gamma', '*.json'))
+normalDream = glob.glob(os.path.join('dataset/dream_normal', '*.json'))
+gammaDream = glob.glob(os.path.join('dataset/dream_gamma', '*.json'))
+
 
 ## \class Pair_info
 #  \brief Represents the relationship
@@ -81,6 +86,7 @@ def simulate_and_save(file_names: list, size: int, out_name: str, strategy=None,
 # \fn simulate_file(file_name, size)
 # \brief Record dispatch result for single file
 def simulate_file(file_name, size, strategy=None, verbose=False,  relaxed=True, risk=0.05, allow=True) -> float:
+    print(file_name)
     network = loadSTNfromJSONfile(file_name)
     goodie = simulation(network, size, strategy, verbose, relaxed, risk, allow)[0]
     if verbose:
@@ -89,7 +95,7 @@ def simulate_file(file_name, size, strategy=None, verbose=False,  relaxed=True, 
 
 ##
 # \fn simulation(network, size)
-def simulation(simulationNetwork: STN, size: int, strategy=None, verbose=False, relaxed=False, risk=0.05, allow=True) -> float:
+def simulation(simulationNetwork: STN, size: int, strategy=None, verbose=False, relaxed=True, risk=0.05, allow=True) -> float:
     # Collect useful data from the original network
     contingent_pairs = simulationNetwork.contingentEdges.keys()
     contingents = {src: sink for (src, sink) in contingent_pairs}
@@ -220,10 +226,30 @@ def simulation(simulationNetwork: STN, size: int, strategy=None, verbose=False, 
 # \brief Create copy of network with bounds related to spread
 def getMinLossBounds(network: STN, risk, gammaDict={}, strategy=None):
     numSig = norm.ppf(1-risk/2)
+    # neg = 0
+    # count = 0
+    # pos = 0
+    # fu = 0 
+    # for nodes, edge in network.edges.items():
+    #     if edge.type == 'stc' and edge.i != 0 and edge.j != 0 :
+    #         count += 1
+    #         if edge.Cji > 0:
+    #             neg += 1
+    #             fu += edge.Cji
+    #         else:
+    #             pos += edge.Cij + edge.Cji
 
-    while risk >= 0:
+    # if neg >= count *0.75: 
+    #     strategy = 'cutHead'
+    # elif neg >= count /4:
+    #     strategy = 'extend'
+    # else:
+    #     strategy = 'cutTail'
+    # print(neg, count, fu, pos, strategy)
+    count = 1
+    while count > 0:
         networkCopy = network.copy() 
-        if strategy != 'cutHead' and strategy !='cutTail':
+        if strategy != 'cutHead' and strategy !='cutTail' and strategy != 'extend':
             for nodes, edge in networkCopy.edges.items():
                 if edge.type == 'Empirical' and edge.dtype() == 'gaussian':
                     sigma = edge.sigma
@@ -265,8 +291,9 @@ def getMinLossBounds(network: STN, risk, gammaDict={}, strategy=None):
             if relaxSearch(networkCopy)[0] != None:
                 return networkCopy
             else:
-                risk -= 0.01
-                risk = float(f'{risk:.2f}')
+                return None
+                # risk -= 0.01
+                # risk = float(f'{risk:.2f}')
         elif strategy == 'cutTail':
             riskL = 0
             riskU = risk
@@ -279,6 +306,13 @@ def getMinLossBounds(network: STN, risk, gammaDict={}, strategy=None):
                         loc = edge.loc
                         lower = (gamma.ppf(q=riskL, a=alpha, scale=1/beta)+loc)*1000
                         upper = (gamma.ppf(q=1-riskU, a=alpha, scale=1/beta)+loc)*1000
+                        edge.Cij = min(upper, edge.Cij)
+                        edge.Cji = min(-(lower), edge.Cji)
+                    elif edge.type == 'Empirical' and edge.dtype() == 'gaussian':
+                        sigma = edge.sigma
+                        mu = edge.mu
+                        lower = norm.ppf(q=riskL, loc = mu, scale=sigma)
+                        upper = norm.ppf(q=1-riskU, loc = mu, scale=sigma)
                         edge.Cij = min(upper, edge.Cij)
                         edge.Cji = min(-(lower), edge.Cji)
                 if relaxSearch(networkCopy)[0] != None:
@@ -303,12 +337,81 @@ def getMinLossBounds(network: STN, risk, gammaDict={}, strategy=None):
                         upper = (gamma.ppf(q=1-riskU, a=alpha, scale=1/beta)+loc)*1000
                         edge.Cij = min(upper, edge.Cij)
                         edge.Cji = min(-(lower), edge.Cji)
+                    elif edge.type == 'Empirical' and edge.dtype() == 'gaussian':
+                        sigma = edge.sigma
+                        mu = edge.mu
+                        lower = norm.ppf(q=riskL, loc = mu, scale=sigma)
+                        upper = norm.ppf(q=1-riskU, loc = mu, scale=sigma)
+                        edge.Cij = min(upper, edge.Cij)
+                        edge.Cji = min(-(lower), edge.Cji)
                 if relaxSearch(networkCopy)[0] != None:
                     return networkCopy
                 else:
                     riskL -= 0.01
                     riskU += 0.01
                     riskU = float(f'{riskU:.2f}')
+            risk -= 0.01
+            risk = float(f'{risk:.2f}')
+        elif strategy == 'extend':
+            riskL = risk/2
+            riskU = risk/2
+            bestL = 0
+            bestU = 0
+            direction = ''
+            while risk >= riskL >= 0 and 0 <= riskU <= risk:
+                networkCopy = network.copy()
+                for nodes, edge in networkCopy.edges.items(): 
+                    if edge.type == 'Empirical' and edge.dtype() == 'gamma':
+                        alpha = edge.alpha
+                        beta = edge.beta
+                        loc = edge.loc
+                        lower = (gamma.ppf(q=riskL, a=alpha, scale=1/beta)+loc)*1000
+                        upper = (gamma.ppf(q=1-riskU, a=alpha, scale=1/beta)+loc)*1000
+                        edge.Cij = min(upper, edge.Cij)
+                        edge.Cji = min(-(lower), edge.Cji)
+                    elif edge.type == 'Empirical' and edge.dtype() == 'gaussian':
+                        sigma = edge.sigma
+                        mu = edge.mu
+                        lower = norm.ppf(q=riskL, loc = mu, scale=sigma)
+                        upper = norm.ppf(q=1-riskU, loc = mu, scale=sigma)
+                        edge.Cij = min(upper, edge.Cij)
+                        edge.Cji = min(-(lower), edge.Cji)
+                if relaxSearch(networkCopy.copy())[0] != None:
+                    if riskL == 0 or direction == 'right':
+                        return relaxSearch(networkCopy)[0]
+                    bestL = riskL
+                    bestU = riskU
+                    riskL -= 0.005
+                    riskU += 0.005
+                    riskL = float(f'{riskL:.3f}')
+                    riskU = float(f'{riskU:.3f}')
+                    direction = 'left'
+                else:
+                    if direction == 'left':
+                        returnNet = network.copy()
+                        for nodes, edge in returnNet.edges.items(): 
+                            if edge.type == 'Empirical' and edge.dtype() == 'gamma':
+                                alpha = edge.alpha
+                                beta = edge.beta
+                                loc = edge.loc
+                                lower = (gamma.ppf(q=bestL, a=alpha, scale=1/beta)+loc)*1000
+                                upper = (gamma.ppf(q=1-bestU, a=alpha, scale=1/beta)+loc)*1000
+                                edge.Cij = min(upper, edge.Cij)
+                                edge.Cji = min(-(lower), edge.Cji)
+                            elif edge.type == 'Empirical' and edge.dtype() == 'gaussian':
+                                sigma = edge.sigma
+                                mu = edge.mu
+                                lower = norm.ppf(q=riskL, loc = mu, scale=sigma)
+                                upper = norm.ppf(q=1-riskU, loc = mu, scale=sigma)
+                                edge.Cij = min(upper, edge.Cij)
+                                edge.Cji = min(-(lower), edge.Cji)
+                        return relaxSearch(returnNet)[0]
+                    else:
+                        direction = 'right'
+                        riskL += 0.005
+                        riskU -= 0.005
+                        riskL = float(f'{riskL:.3f}')
+                        riskU = float(f'{riskU:.3f}')
             risk -= 0.01
             risk = float(f'{risk:.2f}')
     return None
@@ -576,7 +679,6 @@ def generate_realization(network: STN, allow=True) -> dict:
             generated = random.gauss(edge.mu, edge.sigma)
             if not allow:
                 while generated < min(-edge.Cji, edge.Cij) or generated > max(-edge.Cji, edge.Cij):
-                    # print(generated, -edge.Cji, edge.Cij)
                     generated = random.gauss(edge.mu, edge.sigma)
             realization[nodes[1]] = generated
         elif edge.dtype() == "uniform":

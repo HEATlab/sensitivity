@@ -18,7 +18,7 @@ def enum(*sequential, **named):
     enums = dict(list(zip(sequential, list(range(len(sequential))))), **named)
     return type('Enum', (), enums)
 
-edgeTypes = ["NORMAL","LOWER","UPPER","GAMMA"]
+edgeTypes = ["NORMAL","LOWER","UPPER"]
 edgeType = enum(*edgeTypes)
 
 
@@ -207,7 +207,7 @@ class DC_STN(object):
         if edge_type == edgeType.UPPER and (i,j) in self.upper_case_edges:
             old_edge = self.upper_case_edges[(i,j)]
             if parent != old_edge.parent:
-                raise ValueError('Cannot have two upper-case edges with different'+\
+                raise ValueError('Cannot have two upper-case edges with different '\
                                  'parents\nOn edge %d->%d, parents %d and %d'\
                                  %(i,j,old_edge.parent,parent) )
             else:
