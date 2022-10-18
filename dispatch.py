@@ -94,7 +94,7 @@ def simulate_file(file_name, size, strategy=None, verbose=False, relaxed=False, 
 
 ##
 # \fn simulation(network, size)
-def simulation(simulationNetwork: STN, size: int, strategy=None, verbose=False, relaxed=False, risk=0.01, allow=True) -> float:
+def simulation(simulationNetwork: STN, size: int, strategy=None, verbose=False, relaxed=False, risk=0.05, allow=True) -> float:
     # Collect useful data from the original network
     contingent_pairs = simulationNetwork.contingentEdges.keys()
     contingents = {src: sink for (src, sink) in contingent_pairs}
@@ -316,6 +316,99 @@ def getMinLossBounds(network: STN, risk, gammaDict={}, strategy=None):
             edge.Cji = min(-(mu - numSig * sigma), edge.Cji)
         uncut.remove(edge)
     return network
+    
+    ## loop until find the smallest rsik    
+    # while risk >= 0:
+    #     networkCopy = network.copy() 
+    #     if strategy != 'cutHead' and strategy !='cutTail':
+    #         for nodes, edge in networkCopy.edges.items():
+    #             if edge.type == 'Empirical' and edge.dtype() == 'gaussian':
+    #                 sigma = edge.sigma
+    #                 mu = edge.mu
+    #                 if not strategy:
+    #                     edge.Cij = min(mu + numSig * sigma, edge.Cij)
+    #                     edge.Cji = min(-(mu - numSig * sigma), edge.Cji)
+    #                 elif strategy == 'gamma':
+    #                     upper = norm.ppf(q = 1-risk, loc=mu, scale=sigma) 
+    #                     edge.Cij = min(upper, edge.Cij)
+    #                     # edge.Cji = min(-(lower), edge.Cji)
+    #             elif edge.type == 'Empirical' and edge.dtype() == 'gamma':
+    #                 alpha = edge.alpha
+    #                 beta = edge.beta
+    #                 alphaKey = float(f'{alpha:.2f}')
+    #                 betaKey = float(f'{beta:.2f}')
+    #                 loc = float(f'{edge.loc:.1f}')
+
+    #                 if not strategy:
+    #                     if (alphaKey, betaKey) in gammaDict:
+    #                         lower, upper, locPrev = gammaDict[(alphaKey, betaKey)]
+    #                         lower = lower - locPrev + loc*1000
+    #                         upper = upper - locPrev + loc*1000
+    #                     else:
+    #                         lower, upper = minLossGamma(alpha, beta, loc, risk, res = 0.1)
+    #                         gammaDict[(alphaKey, betaKey)] = (lower, upper, loc*1000)
+    #                 elif strategy == 'normal':
+    #                     lower = (gamma.ppf(q=risk*0.5, a=alpha, scale=1/beta)+loc)*1000
+    #                     upper = (gamma.ppf(q=1-risk*0.5, a=alpha, scale=1/beta)+loc)*1000
+    #                 edge.Cij = min(upper, edge.Cij)
+    #                 edge.Cji = min(-(lower), edge.Cji)
+    #             elif edge.isContingent():
+    #                 print("here", edge.type, edge.dtype())
+    #                 sigma = (edge.Cij + edge.Cji)/4
+    #                 mu = (edge.Cij - edge.Cji)/2
+    #                 print(mu, " is mu and ", sigma, " is sigma")
+    #                 edge.Cij = min(mu + numSig * sigma, edge.Cij)
+    #                 edge.Cji = min(-(mu - numSig * sigma), edge.Cji)
+    #         if relaxSearch(networkCopy)[0] != None:
+    #             return networkCopy
+    #         else:
+    #             risk -= 0.01
+    #             risk = float(f'{risk:.2f}')
+    #     elif strategy == 'cutTail':
+    #         riskL = 0
+    #         riskU = risk
+    #         while riskU >= 0:
+    #             networkCopy = network.copy()
+    #             for nodes, edge in networkCopy.edges.items():
+    #                 if edge.type == 'Empirical' and edge.dtype() == 'gamma':
+    #                     alpha = edge.alpha
+    #                     beta = edge.beta
+    #                     loc = edge.loc
+    #                     lower = (gamma.ppf(q=riskL, a=alpha, scale=1/beta)+loc)*1000
+    #                     upper = (gamma.ppf(q=1-riskU, a=alpha, scale=1/beta)+loc)*1000
+    #                     edge.Cij = min(upper, edge.Cij)
+    #                     edge.Cji = min(-(lower), edge.Cji)
+    #             if relaxSearch(networkCopy)[0] != None:
+    #                 return networkCopy
+    #             else:
+    #                 riskL += 0.01
+    #                 riskU -= 0.01
+    #                 riskU = float(f'{riskU:.2f}')
+    #         risk -= 0.01
+    #         risk = float(f'{risk:.2f}')
+    #     elif strategy == 'cutHead':
+    #         riskL = risk
+    #         riskU = 0
+    #         while riskL >= 0:
+    #             networkCopy = network.copy()
+    #             for nodes, edge in networkCopy.edges.items():
+    #                 if edge.type == 'Empirical' and edge.dtype() == 'gamma':
+    #                     alpha = edge.alpha
+    #                     beta = edge.beta
+    #                     loc = edge.loc
+    #                     lower = (gamma.ppf(q=riskL, a=alpha, scale=1/beta)+loc)*1000
+    #                     upper = (gamma.ppf(q=1-riskU, a=alpha, scale=1/beta)+loc)*1000
+    #                     edge.Cij = min(upper, edge.Cij)
+    #                     edge.Cji = min(-(lower), edge.Cji)
+    #             if relaxSearch(networkCopy)[0] != None:
+    #                 return networkCopy
+    #             else:
+    #                 riskL -= 0.01
+    #                 riskU += 0.01
+    #                 riskU = float(f'{riskU:.2f}')
+    #         risk -= 0.01
+    #         risk = float(f'{risk:.2f}')
+    # return None
 
 def recursiveGamma(upper, lower, risk, weights, sum, res = 0.1):
     upper = float(f'{upper:.1f}')
@@ -623,7 +716,6 @@ def dispatch(network: STN,
 # \brief Uniformly at random pick values for contingent edges in STNU
 def generate_realization(network: STN, allow=True) -> dict:
     realization = {}
-
     for nodes, edge in network.contingentEdges.items():
         assert edge.dtype != None
         if edge.dtype() == "gaussian":

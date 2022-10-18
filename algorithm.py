@@ -270,7 +270,6 @@ def DC_Checker(STN, report=False):
     for v in negNodes:
         result, edges, end = DCDijkstra(G, v, preds, novel, \
                                                     [v], negNodes.copy())
-
         if not result:
             conflicts = extractConflict(edges, novel, preds)
             bounds = getFinalResult(conflicts, STN, D, C, report=report)
