@@ -1,5 +1,5 @@
-import math
 from stn import STN, loadSTNfromJSONfile
+from stn.stn import Vertex
 from util import STNtoDCSTN, PriorityQueue
 from dc_stn import DC_STN
 from relax import relaxSearch
@@ -23,6 +23,11 @@ import simulation as sim
 #       https://pdfs.semanticscholar.org/0313/af826f45d090a63fd5d787c92321666115c8.pd
 
 ZERO_ID = 0
+normal169 = glob.glob(os.path.join('dataset/PSTNS_normal','*.json'))
+gamma169 = glob.glob(os.path.join('dataset/PSTNS_gamma','*.json'))
+normaDream = glob.glob(os.path.join('dataset/dream_normal','*.json'))
+gammaDream = glob.glob(os.path.join('dataset/dream_gamma','*.json'))
+
 
 ## \class Pair_info
 #  \brief Represents the relationship
@@ -53,21 +58,21 @@ class Pair_info(object):
         return f"count: {self.count}, frequency: {self.frequency}, time difference: {self.time_differences}, distribution: {self.distribution}"
 
 
-def simulate_and_save_files(file_path, size:int, out_name:str, strategy=None, relaxed=False, dist=True, allow=False):
+def simulate_and_save_files(file_path, size:int, out_name:str, strategy=None, relaxed=False, allow=False):
     file_names = glob.glob(os.path.join(file_path, '*.json'))
     file_names = sorted(file_names, key=lambda s: int(re.search(r'\d+', s).group()))
-    results = simulate_and_save(file_names, size, out_name, strategy, relaxed, dist, allow)
+    results = simulate_and_save(file_names, size, out_name, strategy, relaxed, allow)
     return results
 
 ##
 # \fn simulate_and_save(file_names, size, out_name)
 # \brief Keep track of dispatch results on networks
-def simulate_and_save(file_names: list, size: int, out_name: str, strategy=None, relaxed=True, dist = True, allow=True):
+def simulate_and_save(file_names: list, size: int, out_name: str, strategy=None, relaxed=True, allow=True):
     rates = {}
     # Loop through files and record the dispatch success rates and
     # approximated probabilities
     for i in range(len(file_names)):
-        success_rate = simulate_file(file_names[i], size, strategy=strategy, relaxed=relaxed, gauss=dist, allow=allow)
+        success_rate = simulate_file(file_names[i], size, strategy=strategy, relaxed=relaxed,  allow=allow)
         rates[file_names[i]] = success_rate
         print(file_names[i], success_rate)
 
@@ -80,16 +85,16 @@ def simulate_and_save(file_names: list, size: int, out_name: str, strategy=None,
 ##
 # \fn simulate_file(file_name, size)
 # \brief Record dispatch result for single file
-def simulate_file(file_name, size, strategy=None, verbose=False, gauss=True, relaxed=False, risk=0.05, allow=True) -> float:
+def simulate_file(file_name, size, strategy=None, verbose=False, relaxed=False, risk=0.05, allow=True) -> float:
     network = loadSTNfromJSONfile(file_name)
-    goodie = simulation(network, size, strategy, verbose, gauss, relaxed, risk, allow)[0]
+    goodie = simulation(network, size, strategy, verbose, relaxed, risk, allow)[0]
     if verbose:
         print(f"{file_name} worked {100*goodie}% of the time.")
     return goodie
 
 ##
 # \fn simulation(network, size)
-def simulation(simulationNetwork: STN, size: int, strategy=None, verbose=False, dist=True, relaxed=False, risk=0.05, allow=True) -> float:
+def simulation(simulationNetwork: STN, size: int, strategy=None, verbose=False, relaxed=False, risk=0.01, allow=True) -> float:
     # Collect useful data from the original network
     contingent_pairs = simulationNetwork.contingentEdges.keys()
     contingents = {src: sink for (src, sink) in contingent_pairs}
@@ -119,6 +124,7 @@ def simulation(simulationNetwork: STN, size: int, strategy=None, verbose=False, 
         # dispatching_network, count, cycles, weights = relaxSearch(getMinLossBounds(network.copy(), risk))
         dispatching_network = relaxSearch(getMinLossBounds(guessNetwork, risk, gammaDict, strategy))[0]
 
+        # if there is no way to relax, we let the original network to be the dispactching network
         if dispatching_network == None:
             dispatching_network = guessNetwork
     else:
@@ -151,23 +157,28 @@ def simulation(simulationNetwork: STN, size: int, strategy=None, verbose=False, 
 
     # create the matrix that store the pairwise relationship between vertices
     num = len(simulationNetwork.verts) if 0 in simulationNetwork.verts else len(simulationNetwork.verts) + 1
-    matrix = {}
-
-    for i in range(num):
-        row = {}
-        for j in range(num):
-            block = Pair_info(0,0,size,[],"U")
-            row['vertex_'+str(j)] = block
-        matrix['vertex_'+str(i)] = row
+    
+    ####### start a matrix to keep track of temporal difference btn events
+    # matrix = {}
+    # for i in range(num):
+    #     row = {}
+    #     for j in range(num):
+    #         block = Pair_info(0,0,size,[],"U")
+    #         row['vertex_'+str(j)] = block
+    #     matrix['vertex_'+str(i)] = row
 
     # Run the simulation, each j is one simulation
     for j in range(size):
-        realization = generate_realization(simulationNetwork, dist, allow)
+        # generate realization for each iteration
+        realization = generate_realization(simulationNetwork, allow)
         # print("simulated realization is,",realization)
+        
         copy = dc_network.copy()
 
-        x = dispatch(simulationNetwork, copy, realization, contingents,
+        # we feed the dispatching strategies and realizations into the process 
+        x = dispatch(dispatching_network, copy, realization, contingents,
                           uncontrollables, False)
+        # if the schedule successes, we record the data 
         if x != False:
             result, final_schedule = x
         else:
@@ -175,9 +186,9 @@ def simulation(simulationNetwork: STN, size: int, strategy=None, verbose=False, 
         final_keys = list(final_schedule.keys())
         final_schedule_combo.append(final_keys)
 
-        for i in range(len(final_keys)-1):
-            time_difference = final_schedule[final_keys[i+1]]-final_schedule[final_keys[i]]
-            matrix["vertex_"+str(final_keys[i])]["vertex_"+str(final_keys[i+1])].update(time_difference)
+        # for i in range(len(final_keys)-1):
+        #     time_difference = final_schedule[final_keys[i+1]]-final_schedule[final_keys[i]]
+        #     matrix["vertex_"+str(final_keys[i])]["vertex_"+str(final_keys[i+1])].update(time_difference)
 
         # make a list of controllable events in the ordering of the final_schudule
         event_order = []
@@ -201,27 +212,31 @@ def simulation(simulationNetwork: STN, size: int, strategy=None, verbose=False, 
             total_victories += 1
 
     # clean up the matrix
-    for i in range(num):
-        for j in range(num):
-            time = matrix['vertex_'+str(i)]['vertex_'+str(j)].time_differences
-            if all([t==0 for t in time]):
-                matrix['vertex_'+str(i)]['vertex_'+str(j)].time_differences = ["all zero"]
-            if matrix['vertex_'+str(i)]['vertex_'+str(j)].count == 0:
-                del matrix['vertex_'+str(i)]['vertex_'+str(j)]
-
+    # for i in range(num):
+    #     for j in range(num):
+    #         time = matrix['vertex_'+str(i)]['vertex_'+str(j)].time_differences
+    #         if all([t==0 for t in time]):
+    #             matrix['vertex_'+str(i)]['vertex_'+str(j)].time_differences = ["all zero"]
+    #         if matrix['vertex_'+str(i)]['vertex_'+str(j)].count == 0:
+    #             del matrix['vertex_'+str(i)]['vertex_'+str(j)]
 
     goodie = float(total_victories / size)
     if verbose:
         print(f"Worked {100*goodie}% of the time.")
 
-    return goodie, dict_of_list, dict_of_list_zero, event_order, final_schedule, matrix
+    return goodie, dict_of_list, dict_of_list_zero, event_order, final_schedule,[]
 
 ##
 # \fn getMinLossBounds(network, numSig)
 # \brief Create copy of network with bounds related to spread
 def getMinLossBounds(network: STN, risk, gammaDict={}, strategy=None):
     numSig = norm.ppf(1-risk/2)
-    for nodes, edge in network.edges.items():
+    
+    uncut = list(network.edges.values())
+
+    while len(uncut) != 0:
+        edge = uncut[0]
+        # cut for normal distribution
         if edge.type == 'Empirical' and edge.dtype() == 'gaussian':
             sigma = edge.sigma
             mu = edge.mu
@@ -229,9 +244,11 @@ def getMinLossBounds(network: STN, risk, gammaDict={}, strategy=None):
                 edge.Cij = min(mu + numSig * sigma, edge.Cij)
                 edge.Cji = min(-(mu - numSig * sigma), edge.Cji)
             elif strategy == 'gamma':
+                # cut tail 
                 upper = norm.ppf(q = 1-risk, loc=mu, scale=sigma) 
                 edge.Cij = min(upper, edge.Cij)
                 # edge.Cji = min(-(lower), edge.Cji)
+        # cut for gamma distribution
         elif edge.type == 'Empirical' and edge.dtype() == 'gamma':
             alpha = edge.alpha
             beta = edge.beta
@@ -240,20 +257,56 @@ def getMinLossBounds(network: STN, risk, gammaDict={}, strategy=None):
             loc = float(f'{edge.loc:.1f}')
 
             if not strategy:
-                upper = (gamma.ppf(q=0.9999, a= alpha, scale=1/beta) +loc)*1000
-                lower = (gamma.ppf(q=risk, a= alpha, scale=1/beta) +loc)*1000
+                # cut equal amount of probability on both ends
+                if (alphaKey, betaKey) in gammaDict:
+                    lower, upper, locPrev = gammaDict[(alphaKey, betaKey)]
+                    lower = lower - locPrev + loc*1000
+                    upper = upper - locPrev + loc*1000
+                else:
+                    lower, upper = minLossGamma(alpha, beta, loc, risk, res = 0.1)
+                    gammaDict[(alphaKey, betaKey)] = (lower, upper, loc*1000)
+            elif strategy == 'minCut':
+                # cut in the middle and add one more edge
+
                 # if (alphaKey, betaKey) in gammaDict:
                 #     lower, upper, locPrev = gammaDict[(alphaKey, betaKey)]
-                #     lower = lower - locPrev + loc*1000
+                #     lower = lower - locPrev  + loc*1000
                 #     upper = upper - locPrev + loc*1000
                 # else:
-                #     lower, upper = minLossGamma(alpha, beta, loc, risk, res = 0.1)
-                #     gammaDict[(alphaKey, betaKey)] = (lower, upper, loc*1000)
+                lp = gamma.cdf(x=-edge.Cji/1000-loc, a= alpha, scale = 1/beta)
+                up = 1-gamma.cdf(x=edge.Cij/1000-loc, a= alpha, scale = 1/beta)
+                if lp+up <risk:   
+                    lower, upper = minCutGamma(alpha, beta, loc, risk-lp-up, res = 0.1)
+                    # gammaDict[(alphaKey, betaKey)] = (lower, upper, loc*1000)
+                else:
+                    uncut.remove(edge)
+                    continue
+                    
+                tempL = len(network.verts)
+                tempU = tempL+1
+                network.addVertex(tempL)
+                network.addVertex(tempU)
+                # network.addEdge(tempL, tempU, 0, upper-lower, type='stc')
+                network.addEdge(edge.i,tempL, -edge.Cji, lower, type='Empirical')
+                network.removeEdge(edge.i, edge.j)
+                if (edge.Cij-upper) > 0:
+                    network.addEdge(tempU, edge.j, 0, edge.Cij-upper, type='Empirical')
+            elif strategy == 'cutHead':
+                # cut the head for dist with alpha less than 1, and cut same for dist with alpha greater than 1
+                if alpha <= 1:
+                    upper = (gamma.ppf(q=0.9999, a= alpha, scale=1/beta) +loc)*1000
+                    lower = (gamma.ppf(q=risk, a= alpha, scale=1/beta) +loc)*1000
+                else:
+                    lower = (gamma.ppf(q=risk/2, a=alpha, scale=1/beta)+loc)*1000
+                    upper = (gamma.ppf(q=1-risk/2, a=alpha, scale=1/beta)+loc)*1000
             elif strategy == 'normal':
-                lower = (gamma.ppf(q=risk/2, a=alpha, scale=1/beta)+loc)*1000
-                upper = (gamma.ppf(q=1-risk/2, a=alpha, scale=1/beta)+loc)*1000
+                # cut the same amount of probabilities
+                lower = (gamma.ppf(q=risk*0.5, a=alpha, scale=1/beta)+loc)*1000
+                upper = (gamma.ppf(q=1-risk*0.5, a=alpha, scale=1/beta)+loc)*1000
+            
             edge.Cij = min(upper, edge.Cij)
             edge.Cji = min(-(lower), edge.Cji)
+            
         elif edge.isContingent():
             print("here", edge.type, edge.dtype())
             sigma = (edge.Cij + edge.Cji)/4
@@ -261,6 +314,7 @@ def getMinLossBounds(network: STN, risk, gammaDict={}, strategy=None):
             print(mu, " is mu and ", sigma, " is sigma")
             edge.Cij = min(mu + numSig * sigma, edge.Cij)
             edge.Cji = min(-(mu - numSig * sigma), edge.Cji)
+        uncut.remove(edge)
     return network
 
 def recursiveGamma(upper, lower, risk, weights, sum, res = 0.1):
@@ -282,6 +336,7 @@ def recursiveGamma(upper, lower, risk, weights, sum, res = 0.1):
     else:
         return (lower, upper)
 
+# cut the probability with max uncertainties from tails
 def bestGamma(risk, weights, units, res, mode, loc):
     dp = [0 for i in range(units)]
     key = 0.0
@@ -306,6 +361,56 @@ def bestGamma(risk, weights, units, res, mode, loc):
                 return 1000*lower*res, 1000*upper*res
             lower -=1
 
+# cut the probability with least uncertainties from the mode
+def minGamma(risk, weights, units, res, mode, loc):
+    dp = [0 for i in range(units)]
+    key = 0.0
+    sumIndex = int(mode/res)
+    lower, upper = (sumIndex-1, sumIndex+1) if mode != 0.0 else (0, 1)
+    for i in range(units):
+        key = float(f'{key:.1f}')
+        dp[i] = weights[key]
+        key += res
+    sum = dp[sumIndex]
+    for i in range(units):
+        if lower == 0 or lower == loc*1000:
+            return 0, 0
+        elif dp[upper] >= dp[lower]:
+            sum += dp[upper]
+            if sum >= risk:
+                return 1000*lower*res, 1000*upper*res
+            upper += 1
+        else:
+            sum += dp[lower]
+            if sum >= risk:
+                return 1000*lower*res, 1000*upper*res
+            lower -=1
+
+# lose the least amount of uncertainties
+def minCutGamma(alpha, beta, loc, risk, res=.1):
+    mode = float(f'{loc+1/beta*(alpha-1):.1f}') if alpha >1 else 0.00 # zero frame mode
+    theta = 1/beta
+    ub = gamma.ppf(q=0.99, a=alpha, scale = theta) + loc  # zero frame ub
+    units = round(ub/res)+1
+    X = []
+    lb = 0
+    for i in range(units):
+        X.append(gamma.pdf(x=lb-loc, a=alpha, scale = theta))  # zero frame 
+        lb += res
+
+    # get the weights for all entrances
+    X = [ w/sum(X) for w in X ]
+    weights = {}
+    x = 0
+    for i in range(units):
+        weights[float(f'{x:.1f}')] = X[i]
+        x += res
+    lower, upper = minGamma(risk, weights, units, res, mode, loc)
+    if lower == upper == 0:
+        return 1000*loc, 1000*(gamma.ppf(q=1-risk, a=alpha, scale = theta) + loc)
+    return lower, upper
+
+# lose the max amount of uncertainties
 def minLossGamma(alpha, beta, loc, risk, res=.1):
     mode = float(f'{loc+1/beta*(alpha-1):.1f}') if alpha >1 else 0.00 # zero frame mode
     theta = 1/beta
@@ -411,11 +516,9 @@ def dispatch(network: STN,
 
         # If the executed event was a contingent source
         if current_event in contingent_map:
-            # print(current_event, "current_event is ")
             uncontrollable = contingent_map[current_event]
             delay = realization[uncontrollable] # the length of the contingent edge
             set_time = current_time + delay
-            # print("current, delay", current_time, delay, set_time)
             enabled.add(uncontrollable)
             time_windows[uncontrollable] = [set_time, set_time] #update the time windows for the contingent sink
 
@@ -518,37 +621,31 @@ def dispatch(network: STN,
 ##
 # \fn generate_realization(network)
 # \brief Uniformly at random pick values for contingent edges in STNU
-def generate_realization(network: STN, dist=False, allow=True) -> dict:
+def generate_realization(network: STN, allow=True) -> dict:
     realization = {}
-    if dist:
-        for nodes, edge in network.contingentEdges.items():
-            assert edge.dtype != None
-            if edge.dtype() == "gaussian":
-                generated = random.gauss(edge.mu, edge.sigma)
-                if not allow:
-                    while generated < min(-edge.Cji, edge.Cij) or generated > max(-edge.Cji, edge.Cij):
-                        # print(generated, -edge.Cji, edge.Cij)
-                        generated = random.gauss(edge.mu, edge.sigma)
-                realization[nodes[1]] = generated
-            elif edge.dtype() == "uniform":
-                generated = random.uniform(edge.dist_lb, edge.dist_ub)
-                if not allow:
-                    while generated < min(-edge.Cji, edge.Cij) or generated > max(-edge.Cji, edge.Cij):
-                        print("oop")
-                        generated = random.uniform(edge.dist_lb, edge.dist_ub)
-                realization[nodes[1]] = generated
-            elif edge.dtype() == "gamma":
-                rand = np.random.gamma(edge.alpha, 1/edge.beta)
-                generated = 1000*(edge.loc+rand)
-                if not allow:
-                    while generated < min(-edge.Cji, edge.Cij) or generated > max(-edge.Cji, edge.Cij):
-                        generated = 1000*(edge.loc+np.random.gamma(edge.alpha, 1/edge.beta))
-                realization[nodes[1]] = generated
-    else:
-        for nodes, edge in network.contingentEdges.items():
-            mu = (edge.Cij - edge.Cji)/2
-            sigma = (edge.Cij - mu)/2
-            generated = random.gauss(mu, sigma)
+
+    for nodes, edge in network.contingentEdges.items():
+        assert edge.dtype != None
+        if edge.dtype() == "gaussian":
+            generated = random.gauss(edge.mu, edge.sigma)
+            if not allow:
+                while generated < min(-edge.Cji, edge.Cij) or generated > max(-edge.Cji, edge.Cij):
+                    # print(generated, -edge.Cji, edge.Cij)
+                    generated = random.gauss(edge.mu, edge.sigma)
+            realization[nodes[1]] = generated
+        elif edge.dtype() == "uniform":
+            generated = random.uniform(edge.dist_lb, edge.dist_ub)
+            if not allow:
+                while generated < min(-edge.Cji, edge.Cij) or generated > max(-edge.Cji, edge.Cij):
+                    print("oop")
+                    generated = random.uniform(edge.dist_lb, edge.dist_ub)
+            realization[nodes[1]] = generated
+        elif edge.dtype() == "gamma":
+            rand = np.random.gamma(edge.alpha, 1/edge.beta)
+            generated = 1000*(edge.loc+rand)
+            if not allow:
+                while generated < min(-edge.Cji, edge.Cij) or generated > max(-edge.Cji, edge.Cij):
+                    generated = 1000*(edge.loc+np.random.gamma(edge.alpha, 1/edge.beta))
             realization[nodes[1]] = generated
         
     return realization
@@ -560,3 +657,4 @@ if __name__ == '__main__':
     stn = loadSTNfromJSONfile(data)
     stn2 = loadSTNfromJSONfile(data2)
     stn3 = loadSTNfromJSONfile('mr_x3.json')
+    test = loadSTNfromJSONfile('dataset/PSTNS_gamma/test1.json')

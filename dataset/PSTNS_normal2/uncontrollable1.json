@@ -1,0 +1,267 @@
+{
+    "nodes": [
+        {
+            "node_id": 1
+        },
+        {
+            "node_id": 2
+        },
+        {
+            "node_id": 3
+        },
+        {
+            "node_id": 4
+        },
+        {
+            "node_id": 5
+        },
+        {
+            "node_id": 6
+        },
+        {
+            "node_id": 7
+        },
+        {
+            "node_id": 8
+        },
+        {
+            "node_id": 9
+        },
+        {
+            "node_id": 10
+        },
+        {
+            "node_id": 11
+        },
+        {
+            "node_id": 12
+        },
+        {
+            "node_id": 13
+        },
+        {
+            "node_id": 14
+        },
+        {
+            "node_id": 15
+        },
+        {
+            "node_id": 16
+        },
+        {
+            "node_id": 17
+        },
+        {
+            "node_id": 18
+        },
+        {
+            "node_id": 19
+        },
+        {
+            "node_id": 20
+        }
+    ],
+    "constraints": [
+        {
+            "first_node": 1,
+            "second_node": 2,
+            "type": "pstc",
+            "min_duration": 18768.250000000004,
+            "max_duration": 21811.749999999996,
+            "distribution": {
+                "name": "N_20.29_0.30434999999999945",
+                "type": "Empirical"
+            }
+        },
+        {
+            "first_node": 3,
+            "second_node": 4,
+            "type": "stc",
+            "min_duration": 6320.0,
+            "max_duration": 13706.0
+        },
+        {
+            "first_node": 2,
+            "second_node": 5,
+            "type": "stc",
+            "min_duration": 9780.0,
+            "max_duration": 15867.0
+        },
+        {
+            "first_node": 6,
+            "second_node": 7,
+            "type": "stc",
+            "min_duration": 0.0,
+            "max_duration": 1000000000.0
+        },
+        {
+            "first_node": 8,
+            "second_node": 9,
+            "type": "pstc",
+            "min_duration": 76099.74999999997,
+            "max_duration": 88440.25000000001,
+            "distribution": {
+                "name": "N_82.27_1.2340500000000034",
+                "type": "Empirical"
+            }
+        },
+        {
+            "first_node": 10,
+            "second_node": 11,
+            "type": "pstc",
+            "min_duration": 58043.75000000001,
+            "max_duration": 67456.25,
+            "distribution": {
+                "name": "N_62.75_0.9412499999999984",
+                "type": "Empirical"
+            }
+        },
+        {
+            "first_node": 12,
+            "second_node": 7,
+            "type": "stc",
+            "min_duration": 60000.0,
+            "max_duration": 231720.0
+        },
+        {
+            "first_node": 13,
+            "second_node": 8,
+            "type": "stc",
+            "min_duration": 9540.0,
+            "max_duration": 34221.0
+        },
+        {
+            "first_node": 14,
+            "second_node": 10,
+            "type": "stc",
+            "min_duration": 7190.0,
+            "max_duration": 13719.5
+        },
+        {
+            "first_node": 12,
+            "second_node": 9,
+            "type": "stc",
+            "min_duration": 0.0,
+            "max_duration": 1000000000.0
+        },
+        {
+            "first_node": 6,
+            "second_node": 15,
+            "type": "stc",
+            "min_duration": 60000.0,
+            "max_duration": 323520.0
+        },
+        {
+            "first_node": 16,
+            "second_node": 15,
+            "type": "stc",
+            "min_duration": 0.0,
+            "max_duration": 1440000.0
+        },
+        {
+            "first_node": 16,
+            "second_node": 9,
+            "type": "stc",
+            "min_duration": 60000.0,
+            "max_duration": 287880.0
+        },
+        {
+            "first_node": 11,
+            "second_node": 17,
+            "type": "stc",
+            "min_duration": 1620.0,
+            "max_duration": 20445.0
+        },
+        {
+            "first_node": 5,
+            "second_node": 18,
+            "type": "pstc",
+            "min_duration": 57400.875,
+            "max_duration": 66709.12499999999,
+            "distribution": {
+                "name": "N_62.05499999999999_0.9308249999999987",
+                "type": "Empirical"
+            }
+        },
+        {
+            "first_node": 18,
+            "second_node": 19,
+            "type": "stc",
+            "min_duration": 3550.0,
+            "max_duration": 22166.5
+        },
+        {
+            "first_node": 16,
+            "second_node": 13,
+            "type": "pstc",
+            "min_duration": 76099.74999999997,
+            "max_duration": 88440.25000000001,
+            "distribution": {
+                "name": "N_82.27_1.2340500000000034",
+                "type": "Empirical"
+            }
+        },
+        {
+            "first_node": 12,
+            "second_node": 20,
+            "type": "pstc",
+            "min_duration": 54080.12499999999,
+            "max_duration": 62849.875000000015,
+            "distribution": {
+                "name": "N_58.465_0.8769750000000016",
+                "type": "Empirical"
+            }
+        },
+        {
+            "first_node": 6,
+            "second_node": 3,
+            "type": "pstc",
+            "min_duration": 22773.500000000004,
+            "max_duration": 26466.499999999993,
+            "distribution": {
+                "name": "N_24.619999999999997_0.3692999999999991",
+                "type": "Empirical"
+            }
+        },
+        {
+            "first_node": 20,
+            "second_node": 1,
+            "type": "stc",
+            "min_duration": 1240.0,
+            "max_duration": 18779.5
+        },
+        {
+            "first_node": 4,
+            "second_node": 14,
+            "type": "pstc",
+            "min_duration": 20132.624999999996,
+            "max_duration": 23397.375000000004,
+            "distribution": {
+                "name": "N_21.765_0.3264750000000003",
+                "type": "Empirical"
+            }
+        },
+        {
+            "first_node": 19,
+            "second_node": 7,
+            "type": "pstc",
+            "min_duration": 67326.125,
+            "max_duration": 78243.87499999999,
+            "distribution": {
+                "name": "N_72.785_1.0917749999999984",
+                "type": "Empirical"
+            }
+        },
+        {
+            "first_node": 17,
+            "second_node": 15,
+            "type": "pstc",
+            "min_duration": 73454.25,
+            "max_duration": 85365.74999999999,
+            "distribution": {
+                "name": "N_79.41_1.1911500000000004",
+                "type": "Empirical"
+            }
+        }
+    ]
+}

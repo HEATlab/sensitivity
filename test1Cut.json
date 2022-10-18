@@ -1,0 +1,471 @@
+{
+    "nodes": [
+        {
+            "node_id": 1
+        },
+        {
+            "node_id": 2
+        },
+        {
+            "node_id": 3
+        },
+        {
+            "node_id": 4
+        },
+        {
+            "node_id": 5
+        },
+        {
+            "node_id": 6
+        },
+        {
+            "node_id": 7
+        },
+        {
+            "node_id": 8
+        },
+        {
+            "node_id": 9
+        },
+        {
+            "node_id": 10
+        },
+        {
+            "node_id": 11
+        },
+        {
+            "node_id": 12
+        },
+        {
+            "node_id": 13
+        },
+        {
+            "node_id": 14
+        },
+        {
+            "node_id": 15
+        },
+        {
+            "node_id": 16
+        },
+        {
+            "node_id": 17
+        },
+        {
+            "node_id": 18
+        },
+        {
+            "node_id": 19
+        },
+        {
+            "node_id": 20
+        },
+        {
+            "node_id": 21
+        },
+        {
+            "node_id": 22
+        },
+        {
+            "node_id": 23
+        },
+        {
+            "node_id": 24
+        },
+        {
+            "node_id": 25
+        },
+        {
+            "node_id": 26
+        },
+        {
+            "node_id": 27
+        },
+        {
+            "node_id": 28
+        },
+        {
+            "node_id": 29
+        },
+        {
+            "node_id": 30
+        },
+        {
+            "node_id": 31
+        },
+        {
+            "node_id": 32
+        },
+        {
+            "node_id": 33
+        },
+        {
+            "node_id": 34
+        },
+        {
+            "node_id": 35
+        },
+        {
+            "node_id": 36
+        }
+    ],
+    "constraints": [
+        {
+            "first_node": 0,
+            "second_node": 1,
+            "type": "stc",
+            "min_duration": 0.0,
+            "max_duration": "inf"
+        },
+        {
+            "first_node": 0,
+            "second_node": 2,
+            "type": "stc",
+            "min_duration": 0.0,
+            "max_duration": "inf"
+        },
+        {
+            "first_node": 0,
+            "second_node": 3,
+            "type": "stc",
+            "min_duration": 0.0,
+            "max_duration": "inf"
+        },
+        {
+            "first_node": 0,
+            "second_node": 4,
+            "type": "stc",
+            "min_duration": 0.0,
+            "max_duration": "inf"
+        },
+        {
+            "first_node": 0,
+            "second_node": 5,
+            "type": "stc",
+            "min_duration": 0.0,
+            "max_duration": "inf"
+        },
+        {
+            "first_node": 0,
+            "second_node": 6,
+            "type": "stc",
+            "min_duration": 0.0,
+            "max_duration": "inf"
+        },
+        {
+            "first_node": 0,
+            "second_node": 7,
+            "type": "stc",
+            "min_duration": 0.0,
+            "max_duration": "inf"
+        },
+        {
+            "first_node": 0,
+            "second_node": 8,
+            "type": "stc",
+            "min_duration": 0.0,
+            "max_duration": "inf"
+        },
+        {
+            "first_node": 0,
+            "second_node": 9,
+            "type": "stc",
+            "min_duration": 0.0,
+            "max_duration": "inf"
+        },
+        {
+            "first_node": 0,
+            "second_node": 10,
+            "type": "stc",
+            "min_duration": 0.0,
+            "max_duration": "inf"
+        },
+        {
+            "first_node": 0,
+            "second_node": 11,
+            "type": "stc",
+            "min_duration": 0.0,
+            "max_duration": "inf"
+        },
+        {
+            "first_node": 0,
+            "second_node": 12,
+            "type": "stc",
+            "min_duration": 0.0,
+            "max_duration": "inf"
+        },
+        {
+            "first_node": 0,
+            "second_node": 13,
+            "type": "stc",
+            "min_duration": 0.0,
+            "max_duration": "inf"
+        },
+        {
+            "first_node": 0,
+            "second_node": 14,
+            "type": "stc",
+            "min_duration": 0.0,
+            "max_duration": "inf"
+        },
+        {
+            "first_node": 0,
+            "second_node": 15,
+            "type": "stc",
+            "min_duration": 0.0,
+            "max_duration": "inf"
+        },
+        {
+            "first_node": 0,
+            "second_node": 16,
+            "type": "stc",
+            "min_duration": 0.0,
+            "max_duration": "inf"
+        },
+        {
+            "first_node": 0,
+            "second_node": 17,
+            "type": "stc",
+            "min_duration": 0.0,
+            "max_duration": "inf"
+        },
+        {
+            "first_node": 0,
+            "second_node": 18,
+            "type": "stc",
+            "min_duration": 0.0,
+            "max_duration": "inf"
+        },
+        {
+            "first_node": 0,
+            "second_node": 19,
+            "type": "stc",
+            "min_duration": 0.0,
+            "max_duration": "inf"
+        },
+        {
+            "first_node": 0,
+            "second_node": 20,
+            "type": "stc",
+            "min_duration": 0.0,
+            "max_duration": "inf"
+        },
+        {
+            "first_node": 3,
+            "second_node": 4,
+            "type": "stc",
+            "min_duration": 6320.0,
+            "max_duration": 13706.0
+        },
+        {
+            "first_node": 2,
+            "second_node": 5,
+            "type": "stc",
+            "min_duration": 9780.0,
+            "max_duration": 15867.0
+        },
+        {
+            "first_node": 6,
+            "second_node": 7,
+            "type": "stc",
+            "min_duration": 0.0,
+            "max_duration": 1000000000.0
+        },
+        {
+            "first_node": 10,
+            "second_node": 11,
+            "type": "Empirical",
+            "min_duration": 58043.75000000001,
+            "max_duration": 67456.25
+        },
+        {
+            "first_node": 12,
+            "second_node": 7,
+            "type": "stc",
+            "min_duration": 60000.0,
+            "max_duration": 231720.0
+        },
+        {
+            "first_node": 13,
+            "second_node": 8,
+            "type": "stc",
+            "min_duration": 9540.0,
+            "max_duration": 34221.0
+        },
+        {
+            "first_node": 14,
+            "second_node": 10,
+            "type": "stc",
+            "min_duration": 7190.0,
+            "max_duration": 13719.5
+        },
+        {
+            "first_node": 12,
+            "second_node": 9,
+            "type": "stc",
+            "min_duration": 0.0,
+            "max_duration": 1000000000.0
+        },
+        {
+            "first_node": 6,
+            "second_node": 15,
+            "type": "stc",
+            "min_duration": 60000.0,
+            "max_duration": 323520.0
+        },
+        {
+            "first_node": 16,
+            "second_node": 15,
+            "type": "stc",
+            "min_duration": 0.0,
+            "max_duration": 1440000.0
+        },
+        {
+            "first_node": 16,
+            "second_node": 9,
+            "type": "stc",
+            "min_duration": 60000.0,
+            "max_duration": 287880.0
+        },
+        {
+            "first_node": 11,
+            "second_node": 17,
+            "type": "stc",
+            "min_duration": 1620.0,
+            "max_duration": 20445.0
+        },
+        {
+            "first_node": 18,
+            "second_node": 19,
+            "type": "stc",
+            "min_duration": 3550.0,
+            "max_duration": 22166.5
+        },
+        {
+            "first_node": 20,
+            "second_node": 1,
+            "type": "stc",
+            "min_duration": 1240.0,
+            "max_duration": 18779.5
+        },
+        {
+            "first_node": 4,
+            "second_node": 14,
+            "type": "Empirical",
+            "min_duration": 20132.624999999996,
+            "max_duration": 23397.375000000004
+        },
+        {
+            "first_node": 1,
+            "second_node": 21,
+            "type": "Empirical",
+            "min_duration": 18768.250000000004,
+            "max_duration": 18800.0
+        },
+        {
+            "first_node": 22,
+            "second_node": 2,
+            "type": "Empirical",
+            "min_duration": 0,
+            "max_duration": 2457.8647260228645
+        },
+        {
+            "first_node": 8,
+            "second_node": 23,
+            "type": "Empirical",
+            "min_duration": 76099.74999999997,
+            "max_duration": 76400.0
+        },
+        {
+            "first_node": 24,
+            "second_node": 9,
+            "type": "Empirical",
+            "min_duration": 0,
+            "max_duration": 11840.250000000015
+        },
+        {
+            "first_node": 5,
+            "second_node": 25,
+            "type": "Empirical",
+            "min_duration": 57400.875,
+            "max_duration": 57400.0
+        },
+        {
+            "first_node": 26,
+            "second_node": 18,
+            "type": "Empirical",
+            "min_duration": 0,
+            "max_duration": 6529.977145109224
+        },
+        {
+            "first_node": 16,
+            "second_node": 27,
+            "type": "Empirical",
+            "min_duration": 76099.74999999997,
+            "max_duration": 76400.0
+        },
+        {
+            "first_node": 28,
+            "second_node": 13,
+            "type": "Empirical",
+            "min_duration": 0,
+            "max_duration": 11840.250000000015
+        },
+        {
+            "first_node": 12,
+            "second_node": 29,
+            "type": "Empirical",
+            "min_duration": 54080.12499999999,
+            "max_duration": 54100.0
+        },
+        {
+            "first_node": 30,
+            "second_node": 20,
+            "type": "Empirical",
+            "min_duration": 0,
+            "max_duration": 6217.94875652175
+        },
+        {
+            "first_node": 6,
+            "second_node": 31,
+            "type": "Empirical",
+            "min_duration": 22773.500000000004,
+            "max_duration": 22800.0
+        },
+        {
+            "first_node": 32,
+            "second_node": 3,
+            "type": "Empirical",
+            "min_duration": 0,
+            "max_duration": 2890.82455849868
+        },
+        {
+            "first_node": 19,
+            "second_node": 33,
+            "type": "Empirical",
+            "min_duration": 67326.125,
+            "max_duration": 67400.0
+        },
+        {
+            "first_node": 34,
+            "second_node": 7,
+            "type": "Empirical",
+            "min_duration": 0,
+            "max_duration": 10643.874999999985
+        },
+        {
+            "first_node": 17,
+            "second_node": 35,
+            "type": "Empirical",
+            "min_duration": 73454.25,
+            "max_duration": 73800.0
+        },
+        {
+            "first_node": 36,
+            "second_node": 15,
+            "type": "Empirical",
+            "min_duration": 0,
+            "max_duration": 11365.749999999985
+        }
+    ]
+}

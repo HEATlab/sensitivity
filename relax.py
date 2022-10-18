@@ -205,7 +205,6 @@ def optimalRelax(bounds, weight):
     epsilons = {}
     for e in contingent[m:]:
         epsilons[e.j] = e.Cij + e.Cji - A
-
     return epsilons
 
 
@@ -242,10 +241,13 @@ def relaxSearch(STN):
                 continue
 
             edge = STN.contingentEdges[(i, j)]
-            # if bounds['contingent'][(i, j)][1] == 'UPPER':
-            STN.modifyEdge(i, j, edge.Cij - epsilons[j])
+            # if edge.dtype() == 'gamma' and edge.alpha <= 1:
+            #     STN.modifyEdge(i, j, edge.Cij - epsilons[j])
             # else:
-            #     STN.modifyEdge(j, i, edge.Cji - epsilons[j])
+            if bounds['contingent'][(i, j)][1] == 'UPPER':
+                STN.modifyEdge(i, j, edge.Cij - epsilons[j])
+            else:
+                STN.modifyEdge(j, i, edge.Cji - epsilons[j])
 
         count += 1
         result, conflicts, bounds, weight = DC_Checker(

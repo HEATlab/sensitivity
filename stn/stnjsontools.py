@@ -50,7 +50,7 @@ def loadSTNfromJSONobj(jsonSTN, using_PSTN=True):
 
     # Add the root vertex and put it in the T_x set
     stn.addVertex(0)
-
+    # edges = set()
     # Add the vertices
     for v in jsonSTN['nodes']:
         stn.addVertex(v['node_id'])
