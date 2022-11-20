@@ -18,6 +18,12 @@ def changeToGamma(data_path):
         print(file)
         changeSingleGamma(file)
 
+def changeToExp(data_path):
+    data_list = glob.glob(os.path.join(data_path, '*.json'))
+    for file in data_list:
+        print(file)
+        changeSingleExp(file)
+
 def changeToNormal(data_path):
     data_list = glob.glob(os.path.join(data_path, '*.json'))
     for file in data_list:
@@ -68,6 +74,37 @@ def changeSingleGamma(testJson):
                     loc += leftBound
                     e['distribution'] = {
                         "name": "G_"+str(alpha)+"_("+str(1/beta)+","+str(loc) +")",
+                        "type": "Empirical"
+                    }
+
+    with open(testJson, "w") as jsonFile:
+        json.dump(jsonSTN, jsonFile)
+
+def changeSingleExp(testJson):
+    with open(testJson, 'r') as f:
+        jsonSTN = json.loads(f.read())
+        for e in jsonSTN['constraints']:
+            if 'distribution' in e:
+                name_split = e['distribution']['name'].split("_")
+                loc = e['min_duration']/1000
+                mean = float(name_split[1]) - loc
+                sigma = (e['max_duration'] - e['min_duration'])/1000/10
+                if sigma == 0:
+                    e = {
+                        "first_node": e['first_node'],
+                        "second_node": e['second_node'],
+                        "type": "stc",
+                        "min_duration": e['min_duration'],
+                        "max_duration": e['max_duration']
+                    },
+                else:
+                    span = (e['max_duration'] - e['min_duration'])/1000
+                    # ln 0.01 = -4.605170185988091
+                    # let F(max) = 0.99 = 1-e^(lambda*x)
+                    # then lambda = -ln(0.01)/max
+                    param = 4.605170185988091/span
+                    e['distribution'] = {
+                        "name": "E_"+str(param)+"_"+str(loc),
                         "type": "Empirical"
                     }
 

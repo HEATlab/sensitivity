@@ -1,7 +1,7 @@
 from stn import STN, gammaempirical, loadSTNfromJSONfile
 from util import STNtoDCSTN, PriorityQueue
 from dc_stn import DC_STN
-from relax import relaxSearch
+from relax_copy import relaxSearch
 import empirical
 import random
 import json
@@ -52,21 +52,21 @@ class Pair_info(object):
         return f"count: {self.count}, frequency: {self.frequency}, time difference: {self.time_differences}, distribution: {self.distribution}"
 
 
-def simulate_and_save_files(file_path, size:int, out_name:str, strategy=None, relaxed=False, dist=True, allow=False):
+def simulate_and_save_files(file_path, size:int, out_name:str, strategy=None, relaxed=False, dist=True, allow=False, origin=False):
     file_names = glob.glob(os.path.join(file_path, '*.json'))
     file_names = sorted(file_names, key=lambda s: int(re.search(r'\d+', s).group()))
-    results = simulate_and_save(file_names, size, out_name, strategy, relaxed, dist, allow)
+    results = simulate_and_save(file_names, size, out_name, strategy, relaxed, dist, allow, origin)
     return results
 
 ##
 # \fn simulate_and_save(file_names, size, out_name)
 # \brief Keep track of dispatch results on networks
-def simulate_and_save(file_names: list, size: int, out_name: str, strategy=None, relaxed=True, dist = True, allow=True):
+def simulate_and_save(file_names: list, size: int, out_name: str, strategy=None, relaxed=False, dist = True, allow=True, origin=False):
     rates = {}
     # Loop through files and record the dispatch success rates and
     # approximated probabilities
     for i in range(len(file_names)):
-        success_rate = simulate_file(file_names[i], size, strategy=strategy, relaxed=relaxed, gauss=dist, allow=allow)
+        success_rate = simulate_file(file_names[i], size, strategy=strategy, relaxed=relaxed, gauss=dist, allow=allow, origin=origin)
         rates[file_names[i]] = success_rate
         print(file_names[i], success_rate)
 
@@ -79,16 +79,16 @@ def simulate_and_save(file_names: list, size: int, out_name: str, strategy=None,
 ##
 # \fn simulate_file(file_name, size)
 # \brief Record dispatch result for single file
-def simulate_file(file_name, size, strategy=None, verbose=False, gauss=True, relaxed=False, risk=0.05, allow=True) -> float:
+def simulate_file(file_name, size, strategy=None, verbose=False, gauss=True, relaxed=False, risk=0.05, allow=True, origin=False) -> float:
     network = loadSTNfromJSONfile(file_name)
-    goodie = simulation(network, size, strategy, verbose, gauss, relaxed, risk, allow)[0]
+    goodie = simulation(network, size, strategy, verbose, gauss, relaxed, risk, allow, origin)[0]
     if verbose:
         print(f"{file_name} worked {100*goodie}% of the time.")
     return goodie
 
 ##
 # \fn simulation(network, size)
-def simulation(simulationNetwork: STN, size: int, strategy=None, verbose=False, dist=True, relaxed=False, risk=0.05, allow=True) -> float:
+def simulation(simulationNetwork: STN, size: int, strategy=None, verbose=False, dist=True, relaxed=False, risk=0.05, allow=True, origin=False) -> float:
     # Collect useful data from the original network
     contingent_pairs = simulationNetwork.contingentEdges.keys()
     contingents = {src: sink for (src, sink) in contingent_pairs}
@@ -115,17 +115,19 @@ def simulation(simulationNetwork: STN, size: int, strategy=None, verbose=False, 
     guessNetwork = simulationNetwork.copy()
     
     # initial guess (gaussian distribution based on min and max) of the distribution between contingent pairs
-    for nodes, edge in guessNetwork.edges.items():
-        if edge.type == 'Empirical':
-            mu = (edge.Cij + edge.Cji)/2 - edge.Cji
-            sigma = (edge.Cij + edge.Cji)/10
-            setattr(edge, 'distribution', 'N_'+str(mu/1000)+'_'+str(sigma/1000))
+    # for nodes, edge in guessNetwork.edges.items():
+    #     if edge.type == 'Empirical':
+    #         mu = (edge.Cij + edge.Cji)/2 - edge.Cji
+    #         sigma = (edge.Cij + edge.Cji)/10
+    #         setattr(edge, 'distribution', 'N_'+str(mu/1000)+'_'+str(sigma/1000))
 
     # initial dispatching_network is determined based on using cut methods or not
     if relaxed:
+        print("relaxed Search")
         # dispatching_network, count, cycles, weights = relaxSearch(getMinLossBounds(network.copy(), risk))
-        dispatching_network = relaxSearch(getMinLossBounds(guessNetwork, risk, gammaDict, strategy))[0]
-
+        # dispatching_network = relaxSearch(getMinLossBounds(guessNetwork, risk, gammaDict, strategy))[0]
+        newNet = getMinLossBounds(guessNetwork, risk, gammaDict, strategy)
+        dispatching_network = relaxSearch(newNet, origin)[0]
         if dispatching_network == None:
             dispatching_network = guessNetwork
     else:
@@ -606,6 +608,6 @@ def generate_realization(network: STN, dist=True, allow=True) -> dict:
 
 if __name__ == '__main__':
     data = 'mr_x.json'
-    data2 = 'mr_x2.json'
+    data2 = 'mr_x3.json'
     stn = loadSTNfromJSONfile(data)
     stn2 = loadSTNfromJSONfile(data2)

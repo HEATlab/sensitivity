@@ -2,7 +2,8 @@ from stn import STN, loadSTNfromJSONfile
 from stn.stn import Vertex
 from util import STNtoDCSTN, PriorityQueue
 from dc_stn import DC_STN
-from relax import relaxSearch
+# from relax import relaxSearch
+from relax_copy import relaxSearch
 import empirical
 import random
 import json
@@ -58,21 +59,21 @@ class Pair_info(object):
         return f"count: {self.count}, frequency: {self.frequency}, time difference: {self.time_differences}, distribution: {self.distribution}"
 
 
-def simulate_and_save_files(file_path, size:int, out_name:str, strategy=None, relaxed=False, allow=False):
+def simulate_and_save_files(file_path, size:int, out_name:str, strategy=None, relaxed=False,  origin=True):
     file_names = glob.glob(os.path.join(file_path, '*.json'))
     file_names = sorted(file_names, key=lambda s: int(re.search(r'\d+', s).group()))
-    results = simulate_and_save(file_names, size, out_name, strategy, relaxed, allow)
+    results = simulate_and_save(file_names, size, out_name, strategy, relaxed, origin)
     return results
 
 ##
 # \fn simulate_and_save(file_names, size, out_name)
 # \brief Keep track of dispatch results on networks
-def simulate_and_save(file_names: list, size: int, out_name: str, strategy=None, relaxed=True, allow=True):
+def simulate_and_save(file_names: list, size: int, out_name: str, strategy=None, relaxed=True,  origin=True):
     rates = {}
     # Loop through files and record the dispatch success rates and
     # approximated probabilities
     for i in range(len(file_names)):
-        success_rate = simulate_file(file_names[i], size, strategy=strategy, relaxed=relaxed,  allow=allow)
+        success_rate = simulate_file(file_names[i], size, strategy=strategy, relaxed=relaxed, origin=origin)
         rates[file_names[i]] = success_rate
         print(file_names[i], success_rate)
 
@@ -85,16 +86,16 @@ def simulate_and_save(file_names: list, size: int, out_name: str, strategy=None,
 ##
 # \fn simulate_file(file_name, size)
 # \brief Record dispatch result for single file
-def simulate_file(file_name, size, strategy=None, verbose=False, relaxed=False, risk=0.05, allow=True) -> float:
+def simulate_file(file_name, size, strategy=None, verbose=False, relaxed=False, risk=0.05,  origin=True) -> float:
     network = loadSTNfromJSONfile(file_name)
-    goodie = simulation(network, size, strategy, verbose, relaxed, risk, allow)[0]
+    goodie = simulation(network, size, strategy, verbose, relaxed, risk, origin=origin)[0]
     if verbose:
         print(f"{file_name} worked {100*goodie}% of the time.")
     return goodie
 
 ##
 # \fn simulation(network, size)
-def simulation(simulationNetwork: STN, size: int, strategy=None, verbose=False, relaxed=False, risk=0.05, allow=True) -> float:
+def simulation(simulationNetwork: STN, size: int, strategy=None, verbose=False, relaxed=False, risk=0.05, origin=True) -> float:
     # Collect useful data from the original network
     contingent_pairs = simulationNetwork.contingentEdges.keys()
     contingents = {src: sink for (src, sink) in contingent_pairs}
@@ -122,7 +123,7 @@ def simulation(simulationNetwork: STN, size: int, strategy=None, verbose=False, 
 
     if relaxed:
         # dispatching_network, count, cycles, weights = relaxSearch(getMinLossBounds(network.copy(), risk))
-        dispatching_network = relaxSearch(getMinLossBounds(guessNetwork, risk, gammaDict, strategy))[0]
+        dispatching_network = relaxSearch(getMinLossBounds(guessNetwork, risk, gammaDict, strategy), origin)[0]
 
         # if there is no way to relax, we let the original network to be the dispactching network
         if dispatching_network == None:
@@ -170,7 +171,7 @@ def simulation(simulationNetwork: STN, size: int, strategy=None, verbose=False, 
     # Run the simulation, each j is one simulation
     for j in range(size):
         # generate realization for each iteration
-        realization = generate_realization(simulationNetwork, allow)
+        realization = generate_realization(simulationNetwork)
         # print("simulated realization is,",realization)
         
         copy = dc_network.copy()
@@ -304,8 +305,10 @@ def getMinLossBounds(network: STN, risk, gammaDict={}, strategy=None):
                 lower = (gamma.ppf(q=risk*0.5, a=alpha, scale=1/beta)+loc)*1000
                 upper = (gamma.ppf(q=1-risk*0.5, a=alpha, scale=1/beta)+loc)*1000
             
-            edge.Cij = min(upper, edge.Cij)
-            edge.Cji = min(-(lower), edge.Cji)
+            # edge.Cij = min(upper, edge.Cij)
+            # edge.Cji = min(-(lower), edge.Cji)
+            edge.Cij = upper
+            edge.Cji = -lower
             
         elif edge.isContingent():
             print("here", edge.type, edge.dtype())
@@ -738,6 +741,14 @@ def generate_realization(network: STN, allow=True) -> dict:
             if not allow:
                 while generated < min(-edge.Cji, edge.Cij) or generated > max(-edge.Cji, edge.Cij):
                     generated = 1000*(edge.loc+np.random.gamma(edge.alpha, 1/edge.beta))
+            realization[nodes[1]] = generated
+        elif edge.dtype() == "exponential":
+            rand = np.random.exponential(1/edge.lam)
+            generated = 1000*(edge.loc+rand)
+
+            if not allow:
+                while generated < min(-edge.Cji, edge.Cij) or generated > max(-edge.Cji, edge.Cij):
+                    generated = 1000*(edge.loc+np.random.exponential(1/edge.lam))
             realization[nodes[1]] = generated
         
     return realization

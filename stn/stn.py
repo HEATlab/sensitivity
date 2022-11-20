@@ -124,9 +124,13 @@ class Edge(object):
             return "gaussian"
         elif self.distribution[0] == "G":
             return "gamma"
+        elif self.distribution[0] == "E":
+            return "exponential"
         else:
-            return "unknown"
+            return "unknown!"
 
+
+    # properties for Normal
     @property
     def mu(self):
         name_split = self.distribution.split("_")
@@ -141,6 +145,7 @@ class Edge(object):
             raise ValueError("No sigma for non-normal dist")
         return float(name_split[2]) *1000
 
+    # properties for Gamma
     @property
     def alpha(self):
         name_split = self.distribution.split("_")
@@ -158,10 +163,24 @@ class Edge(object):
     @property
     def loc(self):
         name_split = self.distribution.split("_")
-        if len(name_split) != 3 or name_split[0] != "G":
-            raise ValueError("No location for non-gamma dist")
-        return float(make_tuple(name_split[2])[1])
+        if len(name_split) != 3:
+            raise ValueError("wrong split") 
+        if name_split[0] == "G":
+            return float(make_tuple(name_split[2])[1])
+        elif name_split[0] == "E":
+            return float(name_split[2]) 
+        else:
+            raise ValueError("No location for non-gamma/non-exp dist")
 
+    # properties for Exponential
+    @property
+    def lam(self):
+        name_split = self.distribution.split("_")
+        if len(name_split) != 3 or name_split[0] != "E":
+            raise ValueError("No lambda for non-exponenital dist")
+        return float(name_split[1]) 
+
+    # properties for Uniform
     @property
     def dist_ub(self):
         name_split = self.distribution.split("_")

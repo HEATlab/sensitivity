@@ -1,3 +1,4 @@
+from importlib.metadata import distribution
 from stn import STN
 from stn import loadSTNfromJSONfile
 from dc_stn import DC_STN, edgeType
@@ -93,12 +94,11 @@ def normal(STN):
             new.addEdge(e.i, e.j, e.Cij)
             new.addEdge(e.j, e.i, e.Cji)
         else:
-            # print(e)
-            contingents[(e.i,e.j)] = e
-            contingents[(e.j,e.i)] = e
+            contingents[(e.i,e.j)] = (e, e.distribution)
+            contingents[(e.j,e.i)] = (e, e.distribution)
             if e.Cji != 0:
                 new_vert = len(new.verts)
-                changed[new_vert] = e
+                changed[new_vert] = (e, e.distribution)
                 new.addVertex(new_vert)
                 new.addEdge(e.i, new_vert, -e.Cji)
                 new.addEdge(new_vert, e.i, e.Cji)

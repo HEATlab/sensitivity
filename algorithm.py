@@ -137,17 +137,18 @@ def getFinalResult(conflicts, STN, D, C, report=True):
         if start in D:
             continue
         elif end in D:
-            e = D[end]
+            (e, e_dist) = D[end]
+            # print(D, e, e_dist)
             if start == e.j and edge.type == edgeType.UPPER:
-                result['contingent'][(e.i, e.j)] = (e, 'UPPER')
+                result['contingent'][(e.i, e.j)] = (e, 'UPPER', e_dist)
             elif start == e.i:
-                result['contingent'][(e.i, e.j)] = (e, 'LOWER')
+                result['contingent'][(e.i, e.j)] = (e, 'LOWER', e_dist)
         elif (start,end) in C:
-            e = C[(start, end)]
+            (e, e_dist) = C[(start, end)]
             if edge.type == edgeType.UPPER:
-                result['contingent'][(e.i, e.j)] = (e, 'UPPER')
+                result['contingent'][(e.i, e.j)] = (e, 'UPPER', e_dist)
             else:
-                result['contingent'][(e.i, e.j)] = (e, 'LOWER')
+                result['contingent'][(e.i, e.j)] = (e, 'LOWER', e_dist)
         else:
             e = STN.getEdge(start, end)
             if start == e.i:
