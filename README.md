@@ -139,12 +139,12 @@ A NEOS Python client (made available by the [NEOS server](https://neos-server.or
 This folder contains several JSON files storing results we found related to degree of controllability, empirical success rates for dispatch, and solutions to nonlinear optimization problems. -->
 
 ## Credits
-The Summer 2019 HEATlab consisted of teams *Ctrl-Alt-Repeat* and *MAD-TN*, which our team being the spiritual extention of 2018 team *Prob-In-Ctrl*/
+The Summer 2022 HEATlab consisted of teams *Improvisational-Teamwork* and *MAD-TN*, which our team being the spiritual extention of 2021 team *Controlled-Choices*/ and 2019 team *Ctrl-Alt-Repeat*/
 All teams worked at Harvey Mudd College under the supervision of [Professor Jim Boerkoel](https://www.cs.hmc.edu/~boerkoel/) as part of the HMC CS department's "[summer of CS](https://www.cs.hmc.edu/research/)".
 
-- *Ctrl-Alt-Repeat* ~ Team {Lindsay Popowski, Michael Gao}
-  - Explored dynnamic controllability schedulers for PSTNs
-  - A pre-print of our work, published in ICAPS-19, can be accessed [here](https://www.cs.hmc.edu/HEAT/papers/Gao_et_al_AAAI_2020.pdf).
+- *Improvisational-Teamwork* ~ Team {Rosy Chen, Eryn Ma, Ingrid Wu}
+  - Evaluate how well existing scheduling approaches for PSTN with normal, symmetric distributions extend to skewed, non-ordinary distributions
+  - A pre-print of our work, published in ICAPS-33, can be accessed [NEED TO EDIT](https://www.cs.hmc.edu/HEAT/papers/Gao_et_al_AAAI_2020.pdf).
   
   ## License
   This project is licensed under the terms of the MIT license.
