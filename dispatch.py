@@ -6,17 +6,19 @@ from relax import relaxSearch
 import empirical
 import random
 import json
-import string
+import numpy as np
 
 # For faster checking in safely_scheduled
 import simulation as sim
+from scipy.stats import lognorm
+import math
 
 ##
 # \file dispatch.py
 # \brief Hosts method to dispatch STNUs that were modified by the
 #        old dynamic checking algorithm
 # \note More detailed explanation about the dispatch algorithm can be found in:
-#       https://pdfs.semanticscholar.org/0313/af826f45d090a63fd5d787c92321666115c8.pd
+#       https://pdfs.semanticscholar.org/0313/af826f45d090a63fd5d787c92321666115c8.pdf
 
 ZERO_ID = 0
 
@@ -51,27 +53,12 @@ def simulate_file(file_name, size, verbose=False, gauss=False, relaxed=False) ->
 
 ##
 # \fn simulation(network, size)
-# @param size               The number of time the simulation runs?
 def simulation(network: STN, size: int, verbose=False, gauss=False, relaxed=False) -> float:
+    print("SIMULATION IS RUNNING")
     # Collect useful data from the original network
     contingent_pairs = network.contingentEdges.keys()
     contingents = {src: sink for (src, sink) in contingent_pairs}
-    # this prints a set of uncontrollable events 
     uncontrollables = set(contingents.values())
-    # print("uncontrollables: ", uncontrollables)
-    uncontrolled_size = len(uncontrollables)
-    
-    # creating a dictionary to store all datapoints for each contingent data point - relative to last contingent timepoint
-    dict_of_list = {}
-
-    # creating a dictionary to store all datapoints for each contingent data point - relative to the zero timepoint
-    dict_of_list_zero = {}
-
-
-    # create uncontrolled_size amount of new lists in the dict
-    for events in uncontrollables:
-        dict_of_list[events] = []
-        dict_of_list_zero[events] = []
 
     if relaxed:
         dispatching_network, count, cycles, weights = relaxSearch(getMinLossBounds(network.copy(), 2))
@@ -103,23 +90,10 @@ def simulation(network: STN, size: int, verbose=False, gauss=False, relaxed=Fals
 
     # Run the simulation
     for j in range(size):
-        realization = generate_realization(network, gauss)
+        realization = generate_realizationn(network, gauss)
         copy = dc_network.copy()
-        result, final_schedule = dispatch(dispatching_network, copy, realization, contingents,
-                          uncontrollables, verbose = False)
-
-        # make a list of controllable events in the ordering of the final_schudule
-        event_order = []
-        for events in list(final_schedule.keys()):
-            if events in uncontrollables:
-                event_order.append(events)
-
-        # intializing this as 0 for the first time point to compare to 
-        last_event_time = 0 
-        for events in event_order:
-            dict_of_list_zero[events].append(round(final_schedule[events]/1000,4))
-            dict_of_list[events].append(round((final_schedule[events]-last_event_time)/1000,4)) 
-            last_event_time = final_schedule[events]
+        result = dispatch(network, copy, realization, contingents,
+                          uncontrollables, verbose)
         if verbose:
             print("Completed a simulation.")
         if result:
@@ -129,7 +103,7 @@ def simulation(network: STN, size: int, verbose=False, gauss=False, relaxed=Fals
     if verbose:
         print(f"Worked {100*goodie}% of the time.")
 
-    return goodie, dict_of_list, dict_of_list_zero, event_order
+    return goodie
 
 ##
 # \fn getMinLossBounds(network, numSig)
@@ -142,6 +116,8 @@ def getMinLossBounds(network: STN, numSig):
             edge.Cij = mu + numSig * sigma
             edge.Cji = -(mu - numSig * sigma)
     return network
+
+
 
 
 ##
@@ -184,7 +160,6 @@ def dispatch(network: STN,
             print("\n\nNetwork looks like: ")
             print(dc_network)
 
-            # print("Realization (random pick values for contingent edges): ", realization)
             print("Current time windows: ", time_windows)
             print("Currently enabled: ", enabled)
             print("Already executed: ", executed)
@@ -243,6 +218,7 @@ def dispatch(network: STN,
                     if (current_event != edge.i) and (current_event != edge.j):
                         # Modifying the network
                         dc_network.remove_upper_edge(edge.i, edge.j)
+            
         if current_event in not_executed:
             not_executed.remove(current_event)
         else:
@@ -314,33 +290,37 @@ def dispatch(network: STN,
     if verbose:
         print("\n\nFinal schedule is: ")
         print(schedule)
-        # print("Network is: ")
-        # print(network)
-        # print("uncontrollable is: ")
-        # print(uncontrollable_events)
+        print("Network is: ")
+        print(network)
+    for event in contingent_map:
+        sink = contingent_map[event]
+        schedule[sink] = schedule[event] + realization[sink]
 
     good = empirical.scheduleIsValid(network, schedule)
     if verbose:
         msg = "We're safe!" if good else "We failed!"
         print(msg)
-        # print(good) -> this prints T/False
     return good, schedule
 
 
 ##
 # \fn generate_realization(network)
 # \brief Uniformly at random pick values for contingent edges in STNU
-def generate_realization(network: STN, gauss=True) -> dict:
+def generate_realization(network: STN, gauss=True, betaFlag = False) -> dict:
     realization = {}
     for nodes, edge in network.contingentEdges.items():
+        # print("CONTINGENTEDGES ARE",network.contingentEdges)
         assert edge.dtype != None
 
         if edge.dtype() == "gaussian":
+            # print("WHEN GENERATING THE DISTRIBUTINO IS GAUSS")
             generated = random.gauss(edge.mu, edge.sigma)
-            while generated < min(-edge.Cji, edge.Cij) or generated > max(-edge.Cji, edge.Cij):
-                generated = random.gauss(edge.mu, edge.sigma)
+            #print("GENERATED",edge.mu,edge.sigma)
+            # while generated < min(-edge.Cji, edge.Cij) or generated > max(-edge.Cji, edge.Cij):
+            #     generated = random.gauss(edge.mu, edge.sigma)
             realization[nodes[1]] = generated
         elif edge.dtype() == "uniform":
+            # print("WHEN GENERATING THE DISTRIBUTINO IS UNIFORM")
             generated = random.uniform(edge.dist_lb, edge.dist_ub)
             counter = 0
             while generated < min(-edge.Cji, edge.Cij) or generated > max(-edge.Cji, edge.Cij):
@@ -350,4 +330,152 @@ def generate_realization(network: STN, gauss=True) -> dict:
                     print('over 1000 regenerations')
 
             realization[nodes[1]] = generated
+        elif edge.dtype() == "gamma":
+            # print("WHEN GENERATING THE DISTRIBUTINO IS GAMMA")
+            generated = (np.random.gamma(edge.alpha, edge.beta) + edge.gammastart) * 1000
+           # counter = 0
+            # while (generated + 12500) < min(-edge.Cji, edge.Cij) or (generated + 12500) > max(-edge.Cji, edge.Cij):
+
+            #while generated < min(-edge.Cji, edge.Cij) or generated > max(-edge.Cji, edge.Cij):
+            # while (generated + edge.Cji) < min(-edge.Cji, edge.Cij) or (generated + edge.Cji) > max(-edge.Cji, edge.Cij):
+                #generated = np.random.gamma(edge.alpha, edge.beta)
+                #counter += 1
+                # if counter > 1000:
+                #     print('over 1000 regenerations')
+            realization[nodes[1]] = generated
+        elif edge.dtype() == "exponential":
+            #print("exponential realization")
+            rand = np.random.exponential(1/edge.expo_lambda)
+            generated = 1000 * (edge.expo_start + rand)
+            realization[nodes[1]] = generated
+        elif edge.dtype() == "lognormal":
+            # rvs(s, loc=0, scale=1, size=1, random_state=None)
+            # print("lognorm run")
+            generated = lognorm.rvs(s = edge.lognormal_sigma, loc = edge.lognormal_start, scale = math.exp(edge.lognormal_mu), size=1, random_state=None) * 1000
+            realization[nodes[1]] = generated
+            #print(generated, "generated")
+        
+        elif edge.dtype() == "gamma" or betaFlag:
+            rand = np.random.gamma(edge.alpha, 1/edge.beta)
+            generated = 1000*(edge.loc+rand)
+            # if not allow:
+            #     while generated < min(-edge.Cji, edge.Cij) or generated > max(-edge.Cji, edge.Cij):
+            #         generated = 1000*(edge.loc+np.random.gamma(edge.alpha, 1/edge.beta))
+            if betaFlag:
+                generated = edge.Cij - edge.Cji - generated
+            realization[nodes[1]] = generated
+
     return realization
+
+def generate_realizationn(network: STN, gauss=False) -> dict:
+    realization = {}
+    if gauss:
+        for nodes, edge in network.contingentEdges.items():
+            assert edge.dtype != None
+            if edge.dtype() == "gaussian":
+                generated = random.gauss(edge.mu, edge.sigma)
+                while generated < min(-edge.Cji, edge.Cij) or generated > max(-edge.Cji, edge.Cij):
+                    print("yike")
+                    generated = random.gauss(edge.mu, edge.sigma)
+                realization[nodes[1]] = generated
+            elif edge.dtype() == "uniform":
+                generated = random.uniform(edge.dist_lb, edge.dist_ub)
+                while generated < min(-edge.Cji, edge.Cij) or generated > max(-edge.Cji, edge.Cij):
+                    print("oop")
+                    generated = random.uniform(edge.dist_lb, edge.dist_ub)
+                realization[nodes[1]] = generated
+    else:
+        for nodes, edge in network.contingentEdges.items():
+            mu = (edge.Cij - edge.Cji)/2
+            sigma = (edge.Cij - mu)/2
+            # print("GENERATED",mu, edge.mu,sigma,edge.sigma)
+            generated = random.gauss(mu, sigma)
+            realization[nodes[1]] = generated
+        
+    return realization
+
+def generate_realization_normal(network: STN, gauss=False) -> dict:
+    realization = {}
+    for nodes, edge in network.contingentEdges.items():
+        assert edge.dtype != None
+        generated = random.gauss(edge.mu, edge.sigma)
+            #while generated < min(-edge.Cji, edge.Cij) or generated > max(-edge.Cji, edge.Cij):
+                # print("yike")
+                # generated = random.gauss(edge.mu, edge.sigma)
+        realization[nodes[1]] = generated
+        
+    return realization
+if __name__ == "__main__":
+    directory = "dataset/dynamically_controllable"
+
+    # data_list = glob.glob(os.path.join(directory, '*.json'))
+    # data_list = ['dataset/uncontrollable_full/uncontrollable6.json']
+    # data_list = ['dataset/dreamdata/STN_a4_i4_s5_t10000/original_0.json']
+    # data_list = ['dataset/dreamdata/STN_a2_i4_s1_t4000/original_9.json']
+    # data_list = ['dataset/dreamdata/STN_a3_i8_s1_t2000/original_8.json', 'dataset/dreamdata/STN_a3_i8_s1_t2000/original_4.json', 'dataset/dreamdata/STN_a3_i8_s1_t2000/original_5.json', 'dataset/dreamdata/STN_a3_i8_s1_t2000/original_9.json', 'dataset/dreamdata/STN_a3_i8_s1_t2000/original_2.json', 'dataset/dreamdata/STN_a3_i8_s1_t2000/original_0.json', 'dataset/dreamdata/STN_a3_i8_s1_t2000/original_7.json', 'dataset/dreamdata/STN_a3_i8_s3_t6000/original_9.json', 'dataset/dreamdata/STN_a3_i8_s3_t6000/original_1.json', 'dataset/dreamdata/STN_a4_i8_s1_t1000/original_4.json', 'dataset/dreamdata/STN_a4_i8_s1_t1000/original_5.json', 'dataset/dreamdata/STN_a4_i8_s1_t1000/original_9.json', 'dataset/dreamdata/STN_a4_i8_s1_t1000/original_3.json', 'dataset/dreamdata/STN_a4_i8_s1_t1000/original_0.json', 'dataset/dreamdata/STN_a4_i8_s1_t1000/original_1.json', 'dataset/dreamdata/STN_a4_i8_s1_t1000/original_6.json', 'dataset/dreamdata/STN_a4_i8_s1_t1000/original_7.json', 'dataset/dreamdata/STN_a3_i4_s5_t10000/original_3.json', 'dataset/dreamdata/STN_a2_i4_s1_t1000/original_5.json', 'dataset/dreamdata/STN_a2_i4_s1_t1000/original_9.json', 'dataset/dreamdata/STN_a2_i4_s1_t1000/original_2.json', 'dataset/dreamdata/STN_a3_i8_s3_t3000/original_4.json', 'dataset/dreamdata/STN_a3_i8_s3_t3000/original_9.json', 'dataset/dreamdata/STN_a3_i8_s3_t3000/original_3.json', 'dataset/dreamdata/STN_a3_i8_s3_t3000/original_6.json', 'dataset/dreamdata/STN_a3_i8_s3_t3000/original_7.json', 'dataset/dreamdata/STN_a4_i8_s1_t4000/original_8.json', 'dataset/dreamdata/STN_a4_i8_s1_t4000/original_5.json', 'dataset/dreamdata/STN_a4_i8_s1_t4000/original_2.json', 'dataset/dreamdata/STN_a4_i8_s1_t4000/original_0.json', 'dataset/dreamdata/STN_a4_i8_s1_t4000/original_1.json', 'dataset/dreamdata/STN_a4_i8_s1_t4000/original_6.json', 'dataset/dreamdata/STN_a4_i8_s1_t4000/original_7.json', 'dataset/dreamdata/STN_a3_i4_s5_t20000/original_3.json', 'dataset/dreamdata/STN_a3_i4_s5_t20000/original_7.json', 'dataset/dreamdata/STN_a4_i8_s5_t5000/original_1.json', 'dataset/dreamdata/STN_a4_i8_s5_t5000/original_7.json', 'dataset/dreamdata/STN_a4_i4_s5_t5000/original_3.json', 'dataset/dreamdata/STN_a4_i4_s5_t5000/original_0.json', 'dataset/dreamdata/STN_a2_i8_s5_t20000/original_4.json', 'dataset/dreamdata/STN_a2_i8_s5_t20000/original_9.json', 'dataset/dreamdata/STN_a2_i8_s1_t1000/original_8.json', 'dataset/dreamdata/STN_a2_i8_s1_t1000/original_4.json', 'dataset/dreamdata/STN_a2_i8_s1_t1000/original_2.json', 'dataset/dreamdata/STN_a2_i8_s1_t1000/original_3.json', 'dataset/dreamdata/STN_a2_i8_s1_t1000/original_0.json', 'dataset/dreamdata/STN_a2_i8_s1_t1000/original_1.json', 'dataset/dreamdata/STN_a2_i8_s1_t1000/original_6.json', 'dataset/dreamdata/STN_a3_i4_s3_t3000/original_5.json', 'dataset/dreamdata/STN_a3_i4_s3_t3000/original_1.json', 'dataset/dreamdata/STN_a3_i4_s3_t3000/original_6.json', 'dataset/dreamdata/STN_a3_i4_s3_t3000/original_7.json', 'dataset/dreamdata/STN_a2_i8_s5_t10000/original_5.json', 'dataset/dreamdata/STN_a3_i8_s5_t20000/original_6.json', 'dataset/dreamdata/STN_a4_i8_s5_t20000/original_4.json', 'dataset/dreamdata/STN_a4_i4_s1_t1000/original_8.json', 'dataset/dreamdata/STN_a4_i4_s1_t1000/original_0.json', 'dataset/dreamdata/STN_a4_i4_s1_t1000/original_7.json', 'dataset/dreamdata/STN_a2_i8_s5_t5000/original_6.json', 'dataset/dreamdata/STN_a2_i8_s5_t5000/original_7.json', 'dataset/dreamdata/STN_a3_i8_s5_t10000/original_8.json', 'dataset/dreamdata/STN_a3_i8_s5_t10000/original_2.json', 'dataset/dreamdata/STN_a3_i8_s5_t10000/original_1.json', 'dataset/dreamdata/STN_a3_i4_s1_t2000/original_3.json', 'dataset/dreamdata/STN_a3_i4_s1_t2000/original_7.json', 'dataset/dreamdata/STN_a4_i8_s5_t10000/original_5.json', 'dataset/dreamdata/STN_a4_i8_s5_t10000/original_9.json', 'dataset/dreamdata/STN_a4_i8_s5_t10000/original_2.json', 'dataset/dreamdata/STN_a4_i8_s5_t10000/original_1.json', 'dataset/dreamdata/STN_a4_i8_s5_t10000/original_7.json', 'dataset/dreamdata/STN_a3_i4_s3_t6000/original_3.json', 'dataset/dreamdata/STN_a2_i8_s1_t4000/original_8.json', 'dataset/dreamdata/STN_a2_i8_s1_t4000/original_4.json', 'dataset/dreamdata/STN_a2_i8_s1_t4000/original_9.json', 'dataset/dreamdata/STN_a2_i8_s1_t4000/original_2.json', 'dataset/dreamdata/STN_a2_i8_s1_t4000/original_0.json', 'dataset/dreamdata/STN_a2_i8_s1_t4000/original_1.json', 'dataset/dreamdata/STN_a2_i8_s1_t4000/original_7.json', 'dataset/dreamdata/STN_a4_i4_s1_t2000/original_5.json', 'dataset/dreamdata/STN_a4_i4_s1_t2000/original_3.json', 'dataset/dreamdata/STN_a4_i4_s1_t2000/original_7.json', 'dataset/dreamdata/STN_a4_i4_s3_t6000/original_8.json', 'dataset/dreamdata/STN_a2_i8_s3_t3000/original_8.json', 'dataset/dreamdata/STN_a2_i8_s3_t3000/original_9.json', 'dataset/dreamdata/STN_a2_i8_s3_t3000/original_2.json', 'dataset/dreamdata/STN_a2_i8_s3_t3000/original_3.json', 'dataset/dreamdata/STN_a2_i8_s3_t3000/original_1.json', 'dataset/dreamdata/STN_a2_i8_s3_t3000/original_7.json', 'dataset/dreamdata/STN_a3_i4_s1_t1000/original_8.json', 'dataset/dreamdata/STN_a3_i4_s1_t1000/original_4.json', 'dataset/dreamdata/STN_a3_i4_s1_t1000/original_5.json', 'dataset/dreamdata/STN_a3_i4_s1_t1000/original_6.json', 'dataset/dreamdata/STN_a3_i4_s1_t1000/original_7.json', 'dataset/dreamdata/STN_a4_i4_s3_t12000/original_6.json', 'dataset/dreamdata/STN_a3_i4_s3_t12000/original_8.json', 'dataset/dreamdata/STN_a4_i4_s3_t3000/original_5.json', 'dataset/dreamdata/STN_a4_i4_s3_t3000/original_7.json', 'dataset/dreamdata/STN_a3_i4_s1_t4000/original_5.json', 'dataset/dreamdata/STN_a2_i8_s3_t6000/original_8.json', 'dataset/dreamdata/STN_a2_i8_s1_t2000/original_8.json', 'dataset/dreamdata/STN_a2_i8_s1_t2000/original_4.json', 'dataset/dreamdata/STN_a2_i8_s1_t2000/original_5.json', 'dataset/dreamdata/STN_a2_i8_s1_t2000/original_3.json', 'dataset/dreamdata/STN_a2_i8_s1_t2000/original_0.json', 'dataset/dreamdata/STN_a2_i8_s1_t2000/original_6.json', 'dataset/dreamdata/STN_a2_i8_s1_t2000/original_7.json', 'dataset/dreamdata/STN_a3_i8_s1_t4000/original_8.json', 'dataset/dreamdata/STN_a3_i8_s1_t4000/original_4.json', 'dataset/dreamdata/STN_a3_i8_s1_t4000/original_9.json', 'dataset/dreamdata/STN_a3_i8_s1_t4000/original_2.json', 'dataset/dreamdata/STN_a3_i8_s1_t4000/original_3.json', 'dataset/dreamdata/STN_a3_i8_s1_t4000/original_1.json', 'dataset/dreamdata/STN_a3_i8_s1_t4000/original_6.json', 'dataset/dreamdata/STN_a3_i8_s1_t4000/original_7.json', 'dataset/dreamdata/STN_a3_i8_s5_t5000/original_8.json', 'dataset/dreamdata/STN_a3_i8_s5_t5000/original_4.json', 'dataset/dreamdata/STN_a3_i8_s5_t5000/original_9.json', 'dataset/dreamdata/STN_a3_i8_s5_t5000/original_3.json', 'dataset/dreamdata/STN_a3_i8_s5_t5000/original_6.json', 'dataset/dreamdata/STN_a2_i4_s1_t2000/original_4.json', 'dataset/dreamdata/STN_a2_i4_s1_t2000/original_0.json', 'dataset/dreamdata/STN_a2_i8_s3_t12000/original_5.json', 'dataset/dreamdata/STN_a4_i8_s3_t3000/original_9.json', 'dataset/dreamdata/STN_a4_i8_s3_t3000/original_3.json', 'dataset/dreamdata/STN_a4_i8_s3_t3000/original_0.json', 'dataset/dreamdata/STN_a4_i8_s3_t3000/original_1.json', 'dataset/dreamdata/STN_a4_i8_s3_t3000/original_6.json', 'dataset/dreamdata/STN_a4_i8_s3_t3000/original_7.json', 'dataset/dreamdata/STN_a3_i8_s1_t1000/original_8.json', 'dataset/dreamdata/STN_a3_i8_s1_t1000/original_4.json', 'dataset/dreamdata/STN_a3_i8_s1_t1000/original_5.json', 'dataset/dreamdata/STN_a3_i8_s1_t1000/original_9.json', 'dataset/dreamdata/STN_a3_i8_s1_t1000/original_3.json', 'dataset/dreamdata/STN_a3_i8_s1_t1000/original_0.json', 'dataset/dreamdata/STN_a3_i8_s1_t1000/original_1.json', 'dataset/dreamdata/STN_a3_i8_s1_t1000/original_6.json', 'dataset/dreamdata/STN_a4_i8_s1_t2000/original_8.json', 'dataset/dreamdata/STN_a4_i8_s1_t2000/original_4.json', 'dataset/dreamdata/STN_a4_i8_s1_t2000/original_5.json', 'dataset/dreamdata/STN_a4_i8_s1_t2000/original_9.json', 'dataset/dreamdata/STN_a4_i8_s1_t2000/original_3.json', 'dataset/dreamdata/STN_a4_i8_s1_t2000/original_0.json', 'dataset/dreamdata/STN_a4_i8_s1_t2000/original_6.json', 'dataset/dreamdata/STN_a4_i8_s3_t6000/original_4.json', 'dataset/dreamdata/STN_a4_i8_s3_t6000/original_5.json', 'dataset/dreamdata/STN_a4_i8_s3_t6000/original_2.json', 'dataset/dreamdata/STN_a4_i8_s3_t6000/original_3.json', 'dataset/dreamdata/STN_a4_i8_s3_t12000/original_5.json', 'dataset/dreamdata/STN_a4_i8_s3_t12000/original_9.json', 'dataset/dreamdata/STN_a4_i8_s3_t12000/original_2.json', 'dataset/dreamdata/STN_a3_i8_s3_t12000/original_8.json', 'dataset/dreamdata/STN_a3_i8_s3_t12000/original_5.json', 'dataset/dreamdata/STN_a3_i8_s3_t12000/original_9.json', 'dataset/dreamdata/STN_a3_i8_s3_t12000/original_7.json']
+    # data_list = ['small_examples/dynamic1.json']
+    # data_list = ['paperexample.json']
+    data_list = ['dataset/mrx.json']
+    # data_list = ['untounchedmrx.json']
+
+    ##testing dream data ##
+
+    # directory = 'dataset/dreamdata/'
+    # folders = os.listdir(directory)
+    # data_list = []
+    # for folder in folders:
+    #     data = glob.glob(os.path.join(directory, folder, '*.json'))
+    #     data_list += data
+    # data_list = ['dataset/dreamdata/STN_a2_i4_s1_t4000/original_9.json']
+
+    comparison = []
+    improvement = 0
+    tied = 0
+    failed = []
+    count = 0
+    bad_data = []
+
+    for data in data_list:
+        print("simulating", data)
+        print("load")
+        stn = loadSTNfromJSONfile(data)
+        print("maxgain")
+        print(stn)
+        
+        dispatch = simulation(
+            stn, size=1, verbose=False, gauss=True,relaxed= True)
+        print("dispact", dispatch)
+        print('hotham')
+        # if a:
+        #     result = simulate_maxgain(stn, 100, verbose = False)
+        #     print(result)
+        #     break
+        # print(stn)
+        #print("new stn")
+        #print(newstn)
+        # newresult = simulate_maxgain(stn, newstn,50)
+        # print('c')
+        # oldresult = simulation(stn,50, verbose = False)
+        # if a and oldresult < .9:
+        #     bad_data += [(data, oldresult)]
+        # comparison += [(newresult, oldresult, data)]
+        # count += 1
+        # if newresult > oldresult:
+        #     improvement += 1
+        # elif newresult == oldresult:
+        #     tied += 1
+        #     if newresult == 0.0:
+        #         failed += [data]
+        # comparison += [(newresult, oldresult)]
+
+        print("comparison")
+        print(comparison)
+
+    # text_file = open("weird.txt", "w")
+    # text_file.write(str(bad_data))
+    # text_file.close()
+    # text_file = open("failed.txt", "w")
+    # text_file.write(str(failed))
+    # text_file.close()
+
+
