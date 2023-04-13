@@ -5,7 +5,7 @@ This repository hosts a collection of programs written by team *Improvisational-
 
 <!--- Note that the files included in this repository need to be executed within the code environment created by team *Prob-In-Ctrl* of HEATlab, which can be accessed [here](https://github.com/HEATlab/Prob-in-Ctrl). Additionally, -->
 
-The results for SREA and DREA can be obtained from the DREAM algorithm [source code](https://github.com/HEATlab/DREAM).
+The results for SREA and DREA can be obtained from the DREAM algorithm [source code](https://github.com/HEATlab/DREAM). The results for Min-Loss and Max-Gain can be obtained from the DCforPSTN [source code](https://github.com/HEATlab/DCforPSTN).
 <!-- 
 ## Data Processing
 The `dataset` folder hosts JSON representations of STNUs used in our research.
