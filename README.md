@@ -1,6 +1,6 @@
 # Improvisational Teamwork Summer 2022 
 
-# DCforPSTN
+# Sensitivity
 This repository hosts a collection of programs written by team *Improvisational-Teamwork* (part of the Summer 2022 HEATlab group). This work resulted in a publication at the 33rd ICAPS conference on Automatic Planning and Scheduling titled *"Sensitivity Analysis for Dynamic Control of PSTNs with Skewed Distributions"*.  A pre-print is available [NEED TO EDIT](https://www.cs.hmc.edu/HEAT/papers/Gao_et_al_AAAI_2020.pdf).
 
 <!--- Note that the files included in this repository need to be executed within the code environment created by team *Prob-In-Ctrl* of HEATlab, which can be accessed [here](https://github.com/HEATlab/Prob-in-Ctrl). Additionally, -->
