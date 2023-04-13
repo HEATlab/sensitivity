@@ -1,45 +1,47 @@
 import math
 import json
+from ast import literal_eval as make_tuple
+#from .. import algorithm
 
 # For testing
 # import time
 
-## \file stntools.py
+# \file stntools.py
 #  \brief tools for working with STNs
 #  \note this is legacy from the RobotBrunch project
 
 
-## \class Vertex
+# \class Vertex
 #  \brief Represents an STN timepoint
 class Vertex(object):
 
-    ## \brief Vertex Constructor
+    # \brief Vertex Constructor
     #  \param nodeID       The unique ID number of the vertex in the STN.
     def __init__(self, nodeID):
 
-        ## The unique ID number of the vertex in the STN.
+        # The unique ID number of the vertex in the STN.
         self.nodeID = nodeID
 
-    ## \brief Vertex String Representation
+    # \brief Vertex String Representation
     def __repr__(self):
         return "Vertex {}".format(self.nodeID)
 
-    ## \brief Return a copy of this vertex (with identical IDs, so beware).
+    # \brief Return a copy of this vertex (with identical IDs, so beware).
     def copy(self):
         newVert = Vertex(self.nodeID)
         return newVert
 
-    ## \brief Return a ready-for-json dictionary of this timepoint
+    # \brief Return a ready-for-json dictionary of this timepoint
     def forJSON(self):
         return {"node_id": self.nodeID}
 
 
-## \class Edge
+# \class Edge
 #  \brief represents an STN constraint
 #  \note distribution is the name of the distribution only
 class Edge(object):
 
-    ## \brief Edge Constructor
+    # \brief Edge Constructor
     #  \param i            The starting node of the edge.
     #  \param j            The ending node of the edge.
     #  \param Tmin         The min time needed to go from node i to node j.
@@ -47,26 +49,26 @@ class Edge(object):
     #  \param type         The type of the edge: stc, stcu or pstc
     #  \param distribution The name of the distriution used in the edge.
     def __init__(self, i, j, Tmin, Tmax, type='stc', distribution=None):
-        ## The starting node of the edge.
+        # The starting node of the edge.
         self.i = i
 
-        ## The ending node of the edge.
+        # The ending node of the edge.
         self.j = j
 
-        ## The maximum amount of time allotted.
+        # The maximum amount of time allotted.
         self.Cij = Tmax
 
-        ## The negated minimum amount of times allotted.
+        # The negated minimum amount of times allotted.
         #  (In this form for notation)
         self.Cji = -Tmin
 
-        ## The type of the edge
+        # The type of the edge
         self.type = type
 
-        ## The string representation of the distribution
+        # The string representation of the distribution
         self.distribution = distribution
 
-    ## \brief Return a ready-for-json dictionary of this constraint
+    # \brief Return a ready-for-json dictionary of this constraint
     def forJSON(self):
         json = {"first_node": self.i, "second_node": self.j, "type": self.type}
 
@@ -87,7 +89,7 @@ class Edge(object):
             json["max_duration"] = self.Cij
 
         return json
-
+    
     ##
     #  \brief gets the weight of the edge between Vertex i and j
     #
@@ -99,15 +101,15 @@ class Edge(object):
         else:
             return self.Cji
 
-    ## \brief The minimum weight of the edge
+    # \brief The minimum weight of the edge
     def getWeightMin(self):
         return -self.Cji
 
-    ## \brief The maximum weight of the edge
+    # \brief The maximum weight of the edge
     def getWeightMax(self):
         return self.Cij
 
-    ## \brief Checks if edge is contingent or not
+    # \brief Checks if edge is contingent or not
     def isContingent(self):
         return self.type != 'stc'
 
@@ -121,6 +123,12 @@ class Edge(object):
             return "uniform"
         elif self.distribution[0] == "N":
             return "gaussian"
+        elif self.distribution[0] == "G":
+            return "gamma"
+        elif self.distribution[0] == "E":
+            return "exponential"
+        elif self.distribution[0] == "L":
+            return "lognormal"
         else:
             return "unknown"
 
@@ -129,27 +137,89 @@ class Edge(object):
         name_split = self.distribution.split("_")
         if len(name_split) != 3 or name_split[0] != "N":
             raise ValueError("No mu for non-normal dist")
-        return float(name_split[1]) *1000
+        return float(name_split[1]) * 1000
 
     @property
     def sigma(self):
         name_split = self.distribution.split("_")
         if len(name_split) != 3 or name_split[0] != "N":
             raise ValueError("No sigma for non-normal dist")
-        return float(name_split[2]) *1000
+        return float(name_split[2]) * 1000
+
+    @property
+    def alpha(self):
+        name_split = self.distribution.split("_")
+        if len(name_split) != 3 or name_split[0] != "G":
+            raise ValueError("No alpha for non-gamma dist")
+        return float(name_split[1])
+
+    @property
+    def beta(self):
+        name_split = self.distribution.split("_")
+        if len(name_split) != 3 or name_split[0] != "G":
+            raise ValueError("No beta for non-gamma dist")
+        x = make_tuple(name_split[2])
+        return float(x[0])
+
+    @property
+    def gammastart(self):
+        name_split = self.distribution.split("_")
+        #print("name_split",name_split)
+        if len(name_split) != 3 or name_split[0] != "G":
+            raise ValueError("No beta for non-gamma dist")
+        x = make_tuple(name_split[2])
+        #print(x)
+        return float(x[1])
+
+    @property
+    def expo_lambda(self):
+        name_split = self.distribution.split("_")
+        if len(name_split) != 3 or name_split[0] != "E":
+            raise ValueError("No lambda for exponential")
+        return float(name_split[1]) 
+
+    @property
+    def expo_start(self):
+        name_split = self.distribution.split("_")
+        if len(name_split) != 3 or name_split[0] != "E":
+            raise ValueError("No start for exponential")
+        return float(name_split[2]) 
+    @property
+    def lognormal_mu(self):
+        name_split = self.distribution.split("_")
+        if len(name_split) != 3 or name_split[0] != "L":
+            raise ValueError("No mu for non-lognorm dist")
+        return float(name_split[1])
+
+    @property 
+    def lognormal_sigma(self):
+        name_split = self.distribution.split("_")
+        if len(name_split) != 3 or name_split[0] != "L":
+            raise ValueError("No sigma for non-lognorm dist")
+        x = make_tuple(name_split[2])
+        return float(x[0])
+
+    @property 
+    def lognormal_start(self):
+        name_split = self.distribution.split("_")
+        if len(name_split) != 3 or name_split[0] != "L":
+            raise ValueError("No start for non-lognorm dist")
+        x = make_tuple(name_split[2])
+        return float(x[1])
 
     @property
     def dist_ub(self):
         name_split = self.distribution.split("_")
         if len(name_split) != 3 or name_split[0] != "U":
             raise ValueError("No upper bound for non-uniform dist")
-        return float(name_split[2]) 
+        return float(name_split[2])
+
     @property
     def dist_lb(self):
         name_split = self.distribution.split("_")
         if len(name_split) != 3 or name_split[0] != "U":
             raise ValueError("No lower bound for non-uniform dist")
-        return float(name_split[1]) 
+        return float(name_split[1])
 
     def cap(self):
         """Caps this edge's Cij and Cji properties to a "max" floating point
@@ -158,8 +228,8 @@ class Edge(object):
         self.Cij = min(MAX_FLOAT, max(-MAX_FLOAT, self.Cij))
         self.Cji = min(MAX_FLOAT, max(-MAX_FLOAT, self.Cji))
 
+    # \brief The string representation of the edge
 
-    ## \brief The string representation of the edge
     def __repr__(self):
         return "Edge {} => {} [{}, {}], ".format(
             self.i, self.j, -self.Cji, self.Cij) + "type: " + self.type
@@ -170,35 +240,35 @@ class Edge(object):
 # \brief A representation of an entire STN.
 class STN(object):
 
-    ## The Zero Timepoint.
+    # The Zero Timepoint.
     Z_TIMEPOINT = Vertex(0)
 
-    ## \brief STN constructor
+    # \brief STN constructor
     def __init__(self):
-        ## A dictionary of vertices in the STN in the form {NodeID: Node_Object}
+        # A dictionary of vertices in the STN in the form {NodeID: Node_Object}
         self.verts = {}
 
-        ## A dictionary of edges in the STN in the form
+        # A dictionary of edges in the STN in the form
         # {(Node1, Node2): Edge_Object}
         self.edges = {}
 
-        ## a list of uncontrollable events (NodeIDs of vertices with incoming
+        # a list of uncontrollable events (NodeIDs of vertices with incoming
         # contingencies)
         self.uncontrollables = []
 
-        ## A reverse lookup dictionary of Nodes in contingent edges in the form
+        # A reverse lookup dictionary of Nodes in contingent edges in the form
         # {NodeID_End: NodeID_Start}
         self.parent = {}
 
-        ## A dictionary of contingent edges in the form
+        # A dictionary of contingent edges in the form
         # {(Node1, Node2): Edge_Object}
         self.contingentEdges = {}
 
-        ## A dictionary of requirement edges in the form
+        # A dictionary of requirement edges in the form
         # {(Node1, Node2): Edge_Object}
         self.requirementEdges = {}
 
-        ## The total amount of time allowed for an STN (implemented in
+        # The total amount of time allowed for an STN (implemented in
         #  milliseconds)
         self.makespan = None
 
@@ -206,21 +276,31 @@ class STN(object):
     # Basic functions #
     # -------------------------------------------------------------------------
 
-    ## \brief String representation of the STN
+    # \brief String representation of the STN
     def __repr__(self):
         toPrint = ""
         for (i, j), edge in sorted(self.edges.items()):
 
             if edge.i == 0:
-                toPrint += "Vertex {}: [{}, {}]".format(edge.j,\
-                                                        -edge.Cji,edge.Cij)
+                toPrint += "Vertex {}: [{}, {}]".format(edge.j,
+                                                        -edge.Cji, edge.Cij)
             else:
                 toPrint += "Edge {} => {}: [{}, {}], {}".format(
                     edge.i, edge.j, -edge.Cji, edge.Cij, edge.distribution)
 
             toPrint += "\n"
         return toPrint
+    def getNegNodes(self):
+        negNodes = []
+        for v in list(self.verts.keys()):
+            incoming = self.getIncoming(v)
 
+            for edge in incoming:
+                if edge.getWeightMax() < 0:
+                    negNodes.append(v)
+                    break
+
+        return negNodes
     ##
     # \brief Returns a copy of the STN
     #
@@ -293,6 +373,7 @@ class STN(object):
     # @post               A new edge, generated from the arguments is added to
     #                     the STN.
     def addEdge(self, i, j, Tmin, Tmax, type='stc', distribution=None):
+        #print("adding adge", i, j, self.verts)
         assert i in self.verts and j in self.verts
         assert (i, j) not in self.edges and (j, i) not in self.edges
         newEdge = Edge(i, j, Tmin, Tmax, type, distribution)
@@ -597,8 +678,8 @@ class STN(object):
     #         uncontrollable vertex
     def getIncomingContingent(self, nodeID):
         assert nodeID in self.uncontrollables
-        ctg = [self.contingentEdges[(i,j)] for (i,j) in self.contingentEdges \
-                                                            if j == nodeID]
+        ctg = [self.contingentEdges[(i, j)] for (i, j) in self.contingentEdges
+               if j == nodeID]
 
         if len(ctg) != 1:
             print('E: {} incoming contingent edges!\n{}'.format(len(ctg), ctg))
@@ -725,11 +806,57 @@ class STN(object):
     ##
     #  \brief Runs the Floyd-Warshal algorithm on an STN
     #
-    #  @return Return an STN object that is the minimal network of the original
+    #  @return Return a STN object that is the minimal network of the original
     #          STN. If the input STN is not consistent, return None
     def minimal(self):
         minSTN = self.copy()
 
+        verts = list(range(len(minSTN.verts)))
+        B = [[minSTN.getEdgeWeight(i, j) for j in verts] for i in verts]
+        print("I guess this is all pair",B)
+        for k in verts:
+            for i in verts:
+                for j in verts:
+                    B[i][j] = min(B[i][j], B[i][k] + B[k][j])
+                    minSTN.updateEdge(i, j, B[i][j])
+                
+                    # minSTN.updateEdge()
+        for i in range(len(minSTN.verts)):
+          if (B[i][i] < 0):
+            print(True)
+        print(False)
+        for e in minSTN.getAllEdges():
+            if e.getWeightMin() > e.getWeightMax():
+                print("none")
+                return None
+        print("minstn")
+        return minSTN
+    def hope_floyd(self):
+        minSTN = self.copy()
+
+        verts = list(range(len(minSTN.verts)))
+        B = [[minSTN.getEdgeWeight(i, j) for j in verts] for i in verts]
+        print("I guess this is all pair",B)
+        for k in verts:
+            for i in verts:
+                for j in verts:
+                    if (B[k][j] < float('inf') and B[j][j] < 0 and B[j][i]< float('inf') ):
+                        B[k][i] = -float('inf')
+                    # minSTN.updateEdge()
+        for i in range(len(minSTN.verts)):
+          if (B[i][i] < 0):
+            print("negative cycle from floyd",True)
+        print("negative cycle from floyd",False)
+
+        for e in minSTN.getAllEdges():
+            if e.getWeightMin() > e.getWeightMax():
+                return None
+        
+    # return False
+        return minSTN
+    def minimal_strong(self):
+        minSTN = self.copy()
+        minSTN.hope_floyd()
         verts = list(range(len(minSTN.verts)))
         B = [[minSTN.getEdgeWeight(i, j) for j in verts] for i in verts]
 
@@ -738,27 +865,139 @@ class STN(object):
                 for j in verts:
                     B[i][j] = min(B[i][j], B[i][k] + B[k][j])
                     minSTN.updateEdge(i, j, B[i][j])
+                    if B[i][j] + B[j][i] < 0:
+                        print("jim inconsistent")
+                    
+        print("jim consistent")
                     # minSTN.updateEdge()
-
+        for i in range(len(minSTN.verts)):
+            if (B[i][i] < 0):
+                print("negative cycle",True)
+        print("negative cycle",False)
+        edges_not_working = {}
         for e in minSTN.getAllEdges():
             if e.getWeightMin() > e.getWeightMax():
-                return None
-
-        return minSTN
-
+                if e.isContingent():
+                    edges_not_working['contingent'] = e
+                else:
+                    edges_not_working['requirement'] = e
+        if len(edges_not_working) != 0:
+            print(edges_not_working,"the conflicts")
+            print("returning none")
+            return None, edges_not_working
+        print(edges_not_working,"the conflicts")
+        print("returning minstn")
+        return minSTN, edges_not_working
+    def make_all_pair(self):
+        stncopy = self.copy()
+        all_verts = list(self.verts.keys())
+        for i in all_verts:
+            for j in all_verts:
+                e = stncopy.getEdge(i,j)
+                 
+                if e != None:
+                    continue
+                else:
+                    if i == j and i in stncopy.verts:
+                        stncopy.addEdge(i,j,0,0)
+                    else:
+                        stncopy.addEdge(i,j,float('inf'),float('inf'))
+        return stncopy
+    def NegCycleBellmanFord(self, src):
+        stn = self.copy()
+        edge_list = []
+        for edge in list(stn.edges.values()):
+            edge_list.append([edge.i,edge.j,edge.Cij])
+            edge_list.append([edge.j,edge.i,edge.Cji])
+        print(edge_list)
+        V = len(stn.verts)
+        E = len(edge_list)
+        dist =[1000000 for i in range(V)]
+        parent =[-1 for i in range(V)]
+        dist[src] = 0
+    
+        # Relax all edges |V| - 1 times.
+        #edge = list(stn.edges.values())
+        #E2 = len(edge)
+        for i in range(1, V):
+            for j in range(E):
+        
+                u = edge_list[j][0]
+                v = edge_list[j][1]
+                #weight = stn.getEdgeWeight(u,v)
+                # if edge[j] in list(self.edges.values()):
+                #     weight = edge[i].Cij
+                # else:
+                #     weight = edge[j].Cji
+                weight = edge_list[j][2]
+                #print(weight,"edge weight")
+    
+                if (dist[u] != 1000000 and
+                    dist[u] + weight < dist[v]):
+                
+                    dist[v] = dist[u] + weight
+                    parent[v] = u
+    
+        # Check for negative-weight cycles
+        C = -1;    
+        for i in range(E):   
+            #print("run")
+            u = edge_list[j][0]
+            v = edge_list[j][1]
+            weight = edge_list[j][2]
+            
+            if (dist[u] != 1000000 and 
+                dist[u] + weight < dist[v]):
+                
+                # Store one of the vertex of
+                # the negative weight cycle
+                C = v
+                break
+            
+        if (C != -1):       
+            for i in range(V):       
+                C = parent[C]
+    
+            # To store the cycle vertex
+            cycle = []       
+            v = C
+            
+            while (True):
+                cycle.append(v)
+                if (v == C and len(cycle) > 1):
+                    break
+                v = parent[v]
+    
+            # Reverse cycle[]
+            cycle.reverse()
+    
+            # Printing the negative cycle
+            for v in cycle:       
+                print(v, end = " ");             
+            print()   
+        else:
+            print(-1)
     ##
     # \brief Run minimal STN and check if the STN is consistent or not
     #
     # @return Returns true if the given STN is consistent. Otherwise, returns
     #         False
+
     def isConsistent(self):
         return self.minimal() != None
 
+    def isConsistent_strong(self):
+        a, b = self.minimal_strong()
+        if a != None:
+            return True, b
+        else:
+            return False, b
     ##
     # \fn altConsistent(self)
     #
     # Uses Floyd Warshall to check for consistency. Is hopefull quicker than the
     # the old isConsistent function.
+
     def altConsistent(self):
         # Number of vertices
         events = list(self.verts.keys())
@@ -794,13 +1033,96 @@ class STN(object):
     #            edges) (copied from Lund et al. 2017).
     #
     # @param debug      Flag indicating whether want to print message for debug
-    # @param returnSTN  Flag indicating wehther want to return the reduced STN
+    # @param returnSTN  Flg indicating wehther want to return the reduced STN
     #                   with controllable events or not
     #
     # @return Returns True if STNU is strongly controllable, and False otherwise
     #         If returnSTN is True, then also return the reduced STN
     #
     # NOTE: This function has not been tested, and might not be reliable!!
+    def isStronglyControllable_modified(self, debug=False, returnSTN=False):
+        #print(self.getAllEdges(),"before entering the func")
+        a_bool, bounds = self.isConsistent_strong()
+        if not a_bool:
+            #print("the input is not strong")
+            #print("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$")
+            if returnSTN:
+                return False, bounds, None
+            else:
+                return False, bounds
+
+        newSTN = STN()
+        for v in self.getAllVerts():
+            if v.nodeID not in self.uncontrollables:
+                newSTN.addVertex(v.nodeID)
+        #print("in strong uncontrollable", self.uncontrollables, newSTN.verts)
+        #print("===================================================")
+        #print("all the edges strong",self.getAllEdges())
+        for e in self.getAllEdges():
+            if e.type == 'stc':
+            #if e.i != 0 and e.type == 'stc':
+                if debug:
+                    print("dealing with edge {}->{}".format(e.i, e.j))
+                #print("now we are dealing with edge",e)
+                if e.i in self.uncontrollables:
+                    cont_edge = self.getEdge(self.parent[e.i], e.i)
+                    #print("the new edge youget",cont_edge)
+                    i = self.parent[e.i]
+                    #print("i is now set to in if",i)
+                    l_i = cont_edge.getWeightMin()
+                    u_i = cont_edge.getWeightMax()
+                else:
+                    i = e.i
+                    #print("i is now set to in else",i)
+                    l_i = 0
+                    u_i = 0
+
+                if e.j in self.uncontrollables:
+                    cont_edge = self.getEdge(self.parent[e.j], e.j)
+                    j = self.parent[e.j]
+                    #print("j is now set to",j)
+                    l_j = cont_edge.getWeightMin()
+                    u_j = cont_edge.getWeightMax()
+                else:
+                    j = e.j
+                    #print("j is now set to",j)
+                    l_j = 0
+                    u_j = 0
+
+                # This is taken from the 1998 paper by
+                # Vidal et al. on controllability
+                if debug:
+                    print("Cij: {}  Cji: {}  l_i: {}  u_i: {}  l_j: {}  \
+                                u_j: {}".format(e.Cij, e.Cji, l_i, u_i, l_j,
+                                                u_j))
+
+                lower_bound = -e.Cji + u_i - l_j
+                upper_bound = e.Cij + l_i - u_j
+                #print("the new stn", i, j, newSTN.edges)
+                #if (i,j) in self.edges:
+                if (i, j) in newSTN.edges or (j, i) in newSTN.edges:
+                    newSTN.updateEdge(i, j, upper_bound)
+                    newSTN.updateEdge(j, i, -lower_bound)
+                    if debug:
+                        print("updated edge {}->{}: [{},{}]".format(
+                            i, j, lower_bound, upper_bound))
+                else:
+                    newSTN.addEdge(i, j, lower_bound, upper_bound)
+                    if debug:
+                        print("added edge {}->{}: [{},{}]".format(
+                            i, j, lower_bound, upper_bound))
+
+        if debug:
+            print(newSTN)
+
+        if returnSTN:
+            a_bool, bounds = newSTN.isConsistent_strong()
+            if a_bool:
+                return True, bounds, newSTN
+            else:
+                return False, bounds, None
+       
+        return newSTN.isConsistent_strong()
     def isStronglyControllable(self, debug=False, returnSTN=False):
 
         if not self.isConsistent():
