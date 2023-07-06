@@ -23,6 +23,9 @@ Files throughout the project are commented in doxygen style. -->
 The `stn` folder contains files describing an STN class (which is really a class for STNUs, and more generally could be easily extended to represetn PSTNs) and converting between the class and JSON representations of networks. 
 The remaining programs are not organized in any particular way. Because of this, in the comments that follow we often describe as a function taking in an "STN" when it really also works with STNUs as input.
 
+### Benchmark Variations
+Two existing PSTN benchmarks are changed by replacing theirnormally-distributed  uncertainty  models  with  distributionsthat capture more natural sources of uncertainty. As a basis for our augmented benchmark, we use the DREAM bench-mark of 540 PSTNs (Abrahams et al. 2019) and the CAR-SHARING dataset of 169 PSTNs which was created by San-tana et al. (2016) and then edited by Akmal et al. (2019). Varied benchmarks can be found in the dataset folder.
+
 ### Primary Programs
 
 #### algorithm.py
@@ -144,7 +147,7 @@ All teams worked at Harvey Mudd College under the supervision of [Professor Jim 
 
 - *Improvisational-Teamwork* ~ Team {Rosy Chen, Eryn Ma, Ingrid Wu}
   - Evaluate how well existing scheduling approaches for PSTN with normal, symmetric distributions extend to skewed, non-ordinary distributions
-  - A pre-print of our work, published in ICAPS-33, can be accessed [NEED TO EDIT](https://www.cs.hmc.edu/HEAT/papers/Gao_et_al_AAAI_2020.pdf).
+  - The paper can be accessed at https://ojs.aaai.org/index.php/ICAPS/article/view/27183.
   
   ## License
   This project is licensed under the terms of the MIT license.
