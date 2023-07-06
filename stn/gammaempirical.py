@@ -71,7 +71,8 @@ def fitdist(datasets:list, sizes:list, gammaFlag=True, debug = False, types='pop
         debug: test fit against a known distribution
     """
     dist = distfit(distr=types)  
-    fits = {}  
+    fits = {}
+    example = exampleDists[0]  
 
     if debug:
         for distribution_name in exampleDists:
@@ -105,6 +106,18 @@ def fitdist(datasets:list, sizes:list, gammaFlag=True, debug = False, types='pop
             guessDist = (dist.model['name'], dist.model['loc'] if dist.model['name'] =='norm'else dist.model['arg'][0], dist.model['scale'] if dist.model['name'] =='norm' else (1/dist.model['scale'], dist.model['loc']), len(data), False)
             if plot:
                 fig, ax = dist.plot()
+
+                dist_edge = example[0]
+                a = example[1]
+                par = example[2]
+                print(dist, a, par)
+                if dist_edge == 'G':
+                    x,y = gamma_curve(alpha = float(a), beta = eval(par)[0])
+                    x = [loc + eval(par)[1] for loc in x]
+                elif dist_edge == 'N':
+                    x,y = norm_curve(mu = float(a), sigma = float(par))
+                ax.plot(x, y, 'g', linewidth=1, label='acutal distribution')
+                ax.legend()
                 fig.show()
             fits[guessDist] = (dist.model)
             

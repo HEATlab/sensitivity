@@ -201,7 +201,7 @@ def simulation(simulationNetwork: STN, size: int, strategy=None, verbose=False, 
                 contingent_time_difference[(src, sink)]=[(final_schedule[sink] - final_schedule[src])/1000]
 
         if j >= 20 and j == check:
-            dispatching_network, newCheck = updateDispatch(dispatching_network, contingent_time_difference, check)
+            dispatching_network, newCheck = updateDispatch(dispatching_network, contingent_time_difference, check, sim = simulationNetwork)
             check = newCheck
 
         if verbose:
@@ -225,7 +225,7 @@ def simulation(simulationNetwork: STN, size: int, strategy=None, verbose=False, 
 
     return goodie, dict_of_list, dict_of_list_zero, final_schedule, matrix, realization
 
-def updateDispatch(dispatching_network, time_difference, check):
+def updateDispatch(dispatching_network, time_difference, check, sim = None):
     new_dispatch = dispatching_network.copy()
     count = 0
     gap = 0
@@ -235,7 +235,9 @@ def updateDispatch(dispatching_network, time_difference, check):
         if edge.type == 'Empirical':
             count += 1
             data = time_difference[(src, sink)]
-            fits = gammaempirical.fitdist([data], [len(data)], gammaFlag=False, plot=False, types=['norm', 'gamma'])
+            if sim:
+                actual = sim.edges[nodes].distribution.split('_')
+            fits = gammaempirical.fitdist([data], [len(data)], exampleDists = [actual], gammaFlag=False, plot=True, types=['norm','gamma'])
             distribution = list(fits.keys())[0]
             name, firstPar, secondPar, size, negative = distribution
             score = fits[distribution]['score']
