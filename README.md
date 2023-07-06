@@ -26,6 +26,9 @@ The remaining programs are not organized in any particular way. Because of this,
 ### Benchmark Variations
 Two existing PSTN benchmarks are changed by replacing theirnormally-distributed  uncertainty  models  with  distributionsthat capture more natural sources of uncertainty. As a basis for our augmented benchmark, we use the DREAM bench-mark of 540 PSTNs (Abrahams et al. 2019) and the CAR-SHARING dataset of 169 PSTNs which was created by San-tana et al. (2016) and then edited by Akmal et al. (2019). Varied benchmarks can be found in the dataset folder.
 
+### Algorithms Variations
+We modify Min-Loss and Max-Gain from [Gao, Popowski, and Boerkoel](https://dblp.org/rec/conf/aaai/GaoPB20.html) to build probability-aware dispatching algorithm under dynamic controllability. Details of modified algorithms can be found on branch minloss+ and maxgain+.
+
 ### Primary Programs
 
 #### algorithm.py
